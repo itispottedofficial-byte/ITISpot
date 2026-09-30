@@ -55,7 +55,7 @@ Il widget usa il formato compatto nei contenitori stretti. Per test locali con s
 
 ## Worker Cloudflare esistente
 
-Il file `wrangler.jsonc` punta al Worker **itispot**. Il comando di deploy già configurato resta:
+Il file `wrangler.jsonc` punta al Worker **itispot** nell’account esistente, abilita esplicitamente `workers_dev` e mantiene il binding interno `WORKER_SELF_REFERENCE`. Il comando di deploy già configurato resta:
 
 ```sh
 npx wrangler deploy
@@ -113,7 +113,7 @@ Documentazione dell’adattatore: [OpenNext per Cloudflare](https://opennext.js.
 - Accettare `TRUSTED_IP_HEADER` soltanto dietro il proxy che lo sovrascrive. Un server Node direttamente esposto non può fidarsi di header inviati dal chiamante.
 - Cookie HttpOnly/Secure/SameSite Strict, allowlist UUID server, chiavi private protette da `server-only`, risposte admin non memorizzabili in cache.
 - CSP, protezione framing, `nosniff`, referrer disattivato, nessuna analitica o pubblicazione automatica. CSP conserva `unsafe-inline` per il bootstrap Next; i testi utente restano sempre escaped da React.
-- Errori dei provider senza segreti o contenuti nei log dell’app. L’osservabilità automatica del Worker è disabilitata nel file di configurazione.
+- Errori dei provider senza segreti o contenuti nei log dell’app. L’osservabilità del Worker è mantenuta attiva come nel pannello Cloudflare; non registrare corpi richiesta o credenziali.
 
 ## Gestione e privacy prima dell’apertura
 
@@ -126,6 +126,7 @@ Per abusi: usare l’ID della ricevuta per individuare lo Spot, rifiutare o elim
 ## Verifiche
 
 ```sh
+npm run lint
 npm test
 npm run typecheck
 npm run build
@@ -153,3 +154,11 @@ Il test browser usa `.next-e2e` e `.data/e2e-*`, senza toccare i dati della demo
 ## Struttura
 
 `src/app/` pagine e API; `src/components/` UI esistente; `src/lib/` validazione, sicurezza, repository, conversione immagini e provider; `supabase/schema.sql` schema idempotente; `tests/` verifiche; `scripts/build-worker.mjs` build Cloudflare.
+
+Per verificare il routing dopo un deploy, senza creare Spot:
+
+```sh
+npm run check:deployment -- https://itispot.itispotted-official.workers.dev
+```
+
+Il controllo legge pagine e immagini, verifica la protezione delle API e invia soltanto una richiesta vuota, sempre invalida. Il resoconto del ripristino pubblico è in `DEPLOY.md`.

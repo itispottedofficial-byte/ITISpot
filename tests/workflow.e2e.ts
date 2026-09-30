@@ -7,6 +7,13 @@ test("mobile submission, private image, moderation and logout", async ({
 }, testInfo) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
+  page.on("console", (message) => {
+    if (
+      message.type() === "error" &&
+      /hydration|hydrated|Minified React error/i.test(message.text())
+    )
+      errors.push(message.text());
+  });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await expect(page).toHaveTitle(/ITISpot/);
@@ -21,6 +28,7 @@ test("mobile submission, private image, moderation and logout", async ({
   await page.screenshot({
     path: testInfo.outputPath("home-mobile.png"),
     fullPage: true,
+    caret: "initial",
   });
   await page.getByLabel("Il tuo messaggio").fill("a".repeat(501));
   await expect(page.getByLabel("Il tuo messaggio")).toHaveValue(
@@ -65,6 +73,7 @@ test("mobile submission, private image, moderation and logout", async ({
   await page.screenshot({
     path: testInfo.outputPath("success-mobile.png"),
     fullPage: true,
+    caret: "initial",
   });
   expect((await request.get("/api/admin/images/" + id)).status()).toBe(401);
   await page.goto("/admin");
@@ -83,6 +92,7 @@ test("mobile submission, private image, moderation and logout", async ({
   await page.screenshot({
     path: testInfo.outputPath("admin-mobile.png"),
     fullPage: true,
+    caret: "initial",
   });
   const image = page.getByRole("img", {
     name: "Immagine allegata allo Spot",
@@ -113,6 +123,7 @@ test("mobile submission, private image, moderation and logout", async ({
   await page.screenshot({
     path: testInfo.outputPath("admin-desktop.png"),
     fullPage: true,
+    caret: "initial",
   });
   await page.getByRole("button", { name: "Elimina", exact: true }).click();
   await page
@@ -129,6 +140,7 @@ test("mobile submission, private image, moderation and logout", async ({
   await page.screenshot({
     path: testInfo.outputPath("home-desktop.png"),
     fullPage: true,
+    caret: "initial",
   });
   expect(errors).toEqual([]);
 });
