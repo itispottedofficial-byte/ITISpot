@@ -10,3 +10,16 @@ out/
 
 .DS_Store
 *.tsbuildinfo
+
+# Never commit submissions, Worker secrets or generated deployments.
+.env*
+!.env.example
+.dev.vars*
+.data/
+.wrangler/
+.open-next/
+coverage/
+test-results/
+playwright-report/
+
+.next-e2e/

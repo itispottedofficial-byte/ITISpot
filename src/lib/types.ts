@@ -1,4 +1,4 @@
-export type SpotStatus = 'pending' | 'approved' | 'rejected';
+export type SpotStatus = "pending" | "approved" | "rejected";
 export interface Spot {
   id: string;
   text: string;
@@ -8,4 +8,11 @@ export interface Spot {
   updated_at: string;
   archived_at: string | null;
 }
-export type Action = 'approve' | 'reject' | 'archive' | 'restore' | 'delete';
+export type Action = "approve" | "reject" | "archive" | "restore" | "delete";
+
+export type SpotFilter = SpotStatus | "archived" | "all";
+export interface SpotPage {
+  spots: Spot[];
+  total: number;
+  counts: Record<SpotFilter, number>;
+}
