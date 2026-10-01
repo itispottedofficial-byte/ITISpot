@@ -23,3 +23,7 @@ test-results/
 playwright-report/
 
 .next-e2e/
+
+# Local Supabase CLI linking/cache; never source-controlled.
+supabase/.temp/
+supabase/.branches/

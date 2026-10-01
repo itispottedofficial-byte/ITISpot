@@ -7,6 +7,8 @@ export interface Spot {
   created_at: string;
   updated_at: string;
   archived_at: string | null;
+  reviewed_at: string | null;
+  rejection_reason: string | null;
 }
 export type Action = "approve" | "reject" | "archive" | "restore" | "delete";
 

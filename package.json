@@ -15,7 +15,10 @@
     "format:check": "prettier --check src/lib src/app/api tests",
     "test:e2e": "playwright test",
     "lint": "oxlint src scripts tests *.ts --deny-warnings",
-    "check:deployment": "node scripts/check-deployment.mjs"
+    "check:deployment": "node scripts/check-deployment.mjs",
+    "db:schema": "node scripts/sync-supabase-schema.mjs",
+    "db:schema:check": "node scripts/sync-supabase-schema.mjs --check",
+    "check:supabase": "node --env-file=.env.local scripts/check-supabase.mjs"
   },
   "keywords": [],
   "author": "",

@@ -1,5 +1,14 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
+import { HttpError } from "./http";
+
+export function checkAuthAvailability(error: { status?: number } | null) {
+  if (error && (!error.status || error.status >= 500 || error.status === 429))
+    throw new HttpError(
+      503,
+      "Accesso momentaneamente non disponibile. Riprova tra poco.",
+    );
+}
 export function supabase() {
   return createClient(
     process.env.SUPABASE_URL!,

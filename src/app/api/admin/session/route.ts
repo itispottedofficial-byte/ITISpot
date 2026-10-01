@@ -14,7 +14,7 @@ import {
   rateLimit,
   verifyTurnstile,
 } from "@/lib/security";
-import { supabase } from "@/lib/supabase";
+import { supabase, checkAuthAvailability } from "@/lib/supabase";
 export async function GET(req: NextRequest) {
   try {
     await requireAdmin(req);
@@ -52,6 +52,7 @@ export async function POST(req: NextRequest) {
         email: email.trim(),
         password,
       });
+      checkAuthAvailability(error);
       if (error || !data.user || !adminIds().includes(data.user.id))
         throw new HttpError(
           401,

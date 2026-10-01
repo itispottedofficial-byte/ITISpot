@@ -31,7 +31,13 @@ Supabase e Turnstile non sono ancora configurati per questo progetto. In produzi
 
 ## Collegare Supabase
 
-1. Nel proprio progetto Supabase, eseguire **tutto** `supabase/schema.sql` nel SQL Editor. Lo script è riapplicabile e conserva gli Spot. Include tabella, vincoli, trigger `pending`, rate limit atomico, ricerca paginata e bucket privato `spot-images`.
+La guida completa per questo step è in [supabase/README.md](supabase/README.md): schema definitivo,
+tre migration ordinate, policy RLS/Storage, variabili e creazione del progetto passo per passo.
+Il progetto remoto non è ancora creato: le migration sono verificate localmente, non applicate in produzione.
+**Non attivare Turnstile in questo step**: configurare Supabase da solo mantiene chiusi invio e login pubblici.
+`npm run check:supabase` verifica il backend in sola lettura usando `.env.local`, senza contattare Turnstile.
+
+1. Nel proprio progetto Supabase, eseguire **tutto** `supabase/schema.sql` nel SQL Editor, poi `supabase/verify.sql`. Lo schema è generato dalle migration ordinate in `supabase/migrations`, è riapplicabile e conserva gli Spot. Include metadati di revisione, vincoli, trigger `pending`, rate limit atomico, ricerca paginata e bucket privato `spot-images`. Per usare la cronologia CLI scegliere il percorso alternativo nella guida, senza mescolare i due metodi.
 2. Non aggiungere policy pubbliche su `spots`, `rate_limits` o sul bucket. Le tabelle hanno RLS attiva e accesso revocato a `anon` e `authenticated`; le API server usano la service role.
 3. In Authentication creare gli utenti amministratori con email/password, confermare le email e disabilitare la registrazione pubblica. Non esiste una pagina di registrazione nell’app.
 4. Copiare gli UUID di quegli utenti in `ADMIN_USER_IDS`, separati da virgole. Conoscere una password Supabase senza essere nella lista non dà accesso.
@@ -153,7 +159,7 @@ Il test browser usa `.next-e2e` e `.data/e2e-*`, senza toccare i dati della demo
 
 ## Struttura
 
-`src/app/` pagine e API; `src/components/` UI esistente; `src/lib/` validazione, sicurezza, repository, conversione immagini e provider; `supabase/schema.sql` schema idempotente; `tests/` verifiche; `scripts/build-worker.mjs` build Cloudflare.
+`src/app/` pagine e API; `src/components/` UI esistente; `src/lib/` validazione, sicurezza, repository, conversione immagini e provider; `supabase/migrations/` migration ordinate, `supabase/schema.sql` snapshot generato e `supabase/verify.sql` audit; `tests/` verifiche; `scripts/build-worker.mjs` build Cloudflare.
 
 Per verificare il routing dopo un deploy, senza creare Spot:
 

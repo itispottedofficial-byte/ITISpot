@@ -5,7 +5,7 @@ import { mode, assertConfigured, adminIds } from "./config";
 import { isIP } from "node:net";
 import { HttpError } from "./http";
 import { localTransaction } from "./local-store";
-import { supabase } from "./supabase";
+import { supabase, checkAuthAvailability } from "./supabase";
 const g = globalThis as typeof globalThis & { itispotSecret?: string };
 function secret() {
   return (
@@ -118,6 +118,7 @@ export async function requireAdmin(req: NextRequest) {
       throw new HttpError(401, "Sessione scaduta. Accedi di nuovo.");
   } else {
     const { data, error } = await supabase().auth.getUser(token);
+    checkAuthAvailability(error);
     const admins = adminIds();
     if (error || !data.user || !admins.includes(data.user.id))
       throw new HttpError(401, "Accesso riservato agli amministratori.");

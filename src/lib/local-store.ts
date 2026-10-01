@@ -24,6 +24,11 @@ export async function localTransaction<T>(
         if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
         state = { spots: [], limits: {} };
       }
+      // Preserve demo data created before the moderation metadata migration.
+      for (const spot of state.spots) {
+        spot.reviewed_at ??= spot.status === "pending" ? null : spot.updated_at;
+        spot.rejection_reason ??= null;
+      }
       const result = await work(state);
       await writeFile(dest + ".tmp", JSON.stringify(state), { mode: 0o600 });
       await rename(dest + ".tmp", dest);

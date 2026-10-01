@@ -79,6 +79,8 @@ export async function createSpot(text: string, image?: Buffer): Promise<Spot> {
     created_at: now,
     updated_at: now,
     archived_at: null,
+    reviewed_at: null,
+    rejection_reason: null,
   };
   if (image) await saveImage(spot.image_path!, image);
   try {
@@ -103,6 +105,8 @@ export function patchFor(action: Exclude<Action, "delete">): Partial<Spot> {
   return {
     status: action === "approve" ? "approved" : "rejected",
     updated_at: now,
+    reviewed_at: now,
+    rejection_reason: null,
   };
 }
 export async function updateSpot(id: string, action: Action) {
