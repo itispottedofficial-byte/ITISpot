@@ -47,7 +47,7 @@ test("card text contrast, hover feedback and touch targets stay readable", async
   }
 });
 
-test("local mock cards preserve every layout at 320, 375, 768, 1024 and 1440 pixels", async ({
+test("local mock cards preserve every layout from 320 through 2560 pixels", async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -55,7 +55,7 @@ test("local mock cards preserve every layout at 320, 375, 768, 1024 and 1440 pix
   page.on("console", (message) => {
     if (message.type() === "error") errors.push(message.text());
   });
-  for (const width of [320, 375, 768, 1024, 1440]) {
+  for (const width of [320, 375, 768, 1024, 1280, 1440, 1728, 1920, 2560]) {
     await page.setViewportSize({ width, height: 900 });
     for (const route of ["/", "/novita"]) {
       await page.goto(route + "?preview=filled&featured=d");

@@ -173,10 +173,10 @@ test("HEIC upload survives conversion and stays private", async ({
   expect(r.status()).toBe(201);
   expect((await r.json()).status).toBe("pending");
 });
-test("no horizontal overflow at small phone, tablet and desktop widths", async ({
+test("full-width shells preserve readable content without overflow through ultrawide", async ({
   page,
 }) => {
-  for (const width of [320, 390, 768, 1440]) {
+  for (const width of [320, 375, 768, 1024, 1280, 1440, 1728, 1920, 2560]) {
     await page.setViewportSize({ width, height: 900 });
     for (const path of ["/", "/novita", "/invia", "/admin", "/privacy"]) {
       await page.goto(path);
@@ -185,6 +185,41 @@ test("no horizontal overflow at small phone, tablet and desktop widths", async (
           () => document.documentElement.scrollWidth <= innerWidth,
         ),
       ).toBe(true);
+      if (["/", "/novita", "/invia"].includes(path)) {
+        const shell = await page
+          .locator(".site-shell,.portal-shell")
+          .boundingBox();
+        const viewport = await page.evaluate(
+          () => document.documentElement.clientWidth,
+        );
+        expect(shell!.x).toBe(0);
+        expect(shell!.width).toBe(viewport);
+        expect(shell!.height).toBeGreaterThanOrEqual(900);
+        const header = await page
+          .locator(".topbar,.portal-header")
+          .boundingBox();
+        expect(header!.x).toBe(0);
+        expect(header!.width).toBe(viewport);
+        if (path === "/invia") {
+          const form = await page.locator(".spot-window").boundingBox();
+          expect(form!.width).toBeLessThanOrEqual(740);
+          expect(
+            Math.abs(form!.x + form!.width / 2 - viewport / 2),
+          ).toBeLessThan(1);
+          if (width >= 1600)
+            expect(
+              await page
+                .locator(".site-shell")
+                .evaluate(
+                  (element) => getComputedStyle(element).backgroundSize,
+                ),
+            ).toBe("100% auto");
+        } else if (width > 700) {
+          expect((await page.locator(".portal-sidebar").boundingBox())!.x).toBe(
+            0,
+          );
+        }
+      }
     }
   }
 });
