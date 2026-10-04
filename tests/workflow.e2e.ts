@@ -15,7 +15,7 @@ test("mobile submission, private image, moderation and logout", async ({
       errors.push(message.text());
   });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("/invia");
   await expect(page).toHaveTitle(/ITISpot/);
   await expect(
     page.getByRole("heading", { name: "ITISpot", exact: true }),
@@ -76,6 +76,9 @@ test("mobile submission, private image, moderation and logout", async ({
     caret: "initial",
   });
   expect((await request.get("/api/admin/images/" + id)).status()).toBe(401);
+  expect(await (await request.get("/novita")).text()).not.toContain(
+    "Spot QA: grazie a chi rende questo spazio un bel posto.",
+  );
   await page.goto("/admin");
   await page.getByRole("button", { name: "ENTRA NELLA DEMO" }).click();
   await expect(
@@ -109,9 +112,20 @@ test("mobile submission, private image, moderation and logout", async ({
   await page.getByRole("button", { name: "Chiudi", exact: true }).click();
   await page.getByRole("button", { name: "Approva", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("Spot approvato");
+  const publicFeed = await request.get("/novita");
+  expect(await publicFeed.text()).toContain(
+    "Spot QA: grazie a chi rende questo spazio un bel posto.",
+  );
+  const publicImage = await request.get("/api/public/spots/" + id + "/image");
+  expect(publicImage.status()).toBe(200);
+  expect(publicImage.headers()["cache-control"]).toBe("no-store");
   await page.getByRole("button", { name: /Approvati/ }).click();
   await expect(page.getByText("Spot QA:", { exact: false })).toBeVisible();
   await page.getByRole("button", { name: "Rifiuta", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("Spot rifiutato");
+  expect(
+    (await request.get("/api/public/spots/" + id + "/image")).status(),
+  ).toBe(404);
   await page.getByRole("button", { name: /Rifiutati/ }).click();
   await page.getByRole("button", { name: "Archivia", exact: true }).click();
   await page.getByRole("button", { name: /Archivio/ }).click();
@@ -164,7 +178,7 @@ test("no horizontal overflow at small phone, tablet and desktop widths", async (
 }) => {
   for (const width of [320, 390, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ["/", "/admin", "/privacy"]) {
+    for (const path of ["/", "/novita", "/invia", "/admin", "/privacy"]) {
       await page.goto(path);
       expect(
         await page.evaluate(
@@ -173,4 +187,40 @@ test("no horizontal overflow at small phone, tablet and desktop widths", async (
       ).toBe(true);
     }
   }
+});
+
+test("home navigation and public search keep future features inactive", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: "NOVITÀ", exact: true }),
+  ).toBeVisible();
+  for (const label of [
+    "Curiosità",
+    "Classifiche",
+    "Sondaggi",
+    "Arcade",
+    "Login / Profilo",
+  ])
+    await expect(
+      page.getByRole("button", { name: new RegExp(label + " in arrivo") }),
+    ).toBeDisabled();
+  await page.getByRole("link", { name: "Tutti gli Spot" }).click();
+  await expect(page).toHaveURL(/\/novita$/);
+  await page
+    .getByLabel("Cerca negli Spot approvati")
+    .fill("nessuna corrispondenza QA");
+  await page.getByRole("button", { name: "Cerca", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Nessuno Spot trovato." }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Cerca negli Spot approvati")).toHaveValue(
+    "nessuna corrispondenza QA",
+  );
+  await page.getByRole("link", { name: "Cancella ricerca" }).click();
+  await expect(page).toHaveURL(/\/novita$/);
+  await page.getByRole("link", { name: "Invia Spot", exact: true }).click();
+  await expect(page).toHaveURL(/\/invia$/);
+  await expect(page.getByLabel("Il tuo messaggio")).toBeVisible();
 });

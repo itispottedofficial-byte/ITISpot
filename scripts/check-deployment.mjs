@@ -18,7 +18,7 @@ async function check(path, statuses, options) {
   console.log(`${options?.method || "GET"} ${path}: ${response.status}`);
   return { response, body, bytes };
 }
-for (const path of ["/", "/admin", "/privacy"]) {
+for (const path of ["/", "/novita", "/invia", "/admin", "/privacy"]) {
   const { response, body } = await check(path, [200]);
   assert.match(response.headers.get("content-type") || "", /text\/html/);
   assert.match(body, /ITISpot/);

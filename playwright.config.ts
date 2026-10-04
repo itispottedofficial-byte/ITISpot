@@ -1,4 +1,10 @@
 import { defineConfig } from "@playwright/test";
+import { rmSync } from "node:fs";
+import { preparePreviewData } from "./scripts/ui-preview-fixtures.mjs";
+const previewDirectory = await preparePreviewData();
+process.once("exit", () =>
+  rmSync(previewDirectory, { recursive: true, force: true }),
+);
 export default defineConfig({
   testDir: "./tests",
   testMatch: "**/*.e2e.ts",
@@ -15,6 +21,7 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 60000,
     env: {
+      ITISPOT_PREVIEW_DIR: previewDirectory,
       ITISPOT_MODE: "demo",
       ITISPOT_RUNTIME: "node",
       APP_ORIGIN: "http://127.0.0.1:3190",

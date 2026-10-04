@@ -18,7 +18,8 @@
     "check:deployment": "node scripts/check-deployment.mjs",
     "db:schema": "node scripts/sync-supabase-schema.mjs",
     "db:schema:check": "node scripts/sync-supabase-schema.mjs --check",
-    "check:supabase": "node --env-file=.env.local scripts/check-supabase.mjs"
+    "check:supabase": "node --env-file=.env.local scripts/check-supabase.mjs",
+    "dev:preview": "node scripts/dev-preview.mjs"
   },
   "keywords": [],
   "author": "",

@@ -2,7 +2,7 @@
 
 **Say it. Stay anonymous.** Web app Next.js 16 / React 19 / TypeScript, stile Y2K blu e chrome. Il repository e il Worker esistenti sono mantenuti.
 
-Gli utenti inviano testo anonimo (1–500 caratteri) e, opzionalmente, una foto. Ogni Spot nasce **pending**, anche a livello database. Solo gli amministratori autorizzati possono leggerlo e moderarlo. Approvare **non pubblica**: questo MVP non ha un feed pubblico.
+Gli utenti inviano testo anonimo (1–500 caratteri) e, opzionalmente, una foto. Ogni Spot nasce **pending**, anche a livello database. Solo gli amministratori autorizzati possono leggere e moderare la coda. La Home e `/novita` mostrano esclusivamente gli Spot **approved** e non archiviati, come **Anonimo**. Pending e rejected restano privati.
 
 ## Avvio della demo locale
 
@@ -16,7 +16,9 @@ npm run dev
 
 Apri <http://127.0.0.1:3187>. Usa lo stesso hostname di `APP_ORIGIN`: `localhost` e `127.0.0.1` sono origini diverse.
 
-- `/`: form, anteprima, contatore, consenso, ricevuta con ID, regole.
+- `/`: Home Y2K con ricerca, sidebar e tre finestre (ultimo Spot, sondaggio e trending).
+- `/novita`: feed degli Spot approvati e non archiviati, ricerca testuale e paginazione.
+- `/invia`: form originale, anteprima, contatore, consenso, ricevuta con ID, regole.
 - `/admin`: **Entra nella demo**, ricerca per testo/ID, filtri, pagine da 24 Spot, anteprima privata, approva/rifiuta/archivia/ripristina/elimina con conferma.
 - `/privacy`: funzionamento tecnico, limiti dell’anonimato e contatti del gestore.
 - I dati della demo persistono in `.data/store.json` e `.data/images/`. Non sono versionati. Non cancellarli per aggiornare il codice.
@@ -27,14 +29,13 @@ La demo è aperta a chi raggiunge il server locale: usare solo contenuti di prov
 
 Sono presenti test di API, SQL PostgreSQL e browser. Il flusso completo della demo, le immagini JPG/PNG/HEIC, la moderazione e il responsive sono verificabili con i comandi sotto. I test Supabase Auth/Storage e Turnstile simulano le risposte dei provider: **non sostituiscono un collaudo con il proprio account**.
 
-Supabase e Turnstile non sono ancora configurati per questo progetto. In produzione, con configurazione mancante, il sito mostra un messaggio di preparazione e blocca invio e login. La build riuscita non prova un collegamento ai servizi reali.
+Il backend V1 è già configurato e collaudato su `https://itispot.dpdns.org`. La release Home e Novità mantiene invariati il backend V1 e la configurazione remota; il deploy richiede prima lint, typecheck, test browser e build riusciti. Su un ambiente diverso con configurazione mancante, il form e il login restano bloccati e il feed mostra un errore controllato.
 
 ## Collegare Supabase
 
 La guida completa per questo step è in [supabase/README.md](supabase/README.md): schema definitivo,
 tre migration ordinate, policy RLS/Storage, variabili e creazione del progetto passo per passo.
-Il progetto remoto non è ancora creato: le migration sono verificate localmente, non applicate in produzione.
-**Non attivare Turnstile in questo step**: configurare Supabase da solo mantiene chiusi invio e login pubblici.
+Il progetto remoto esistente è già configurato e il suo audit SQL è passato. Le istruzioni seguenti servono a replicare la configurazione su un altro ambiente, non richiedono di ricreare il progetto o riapplicare migration per Home e Novità.
 `npm run check:supabase` verifica il backend in sola lettura usando `.env.local`, senza contattare Turnstile.
 
 1. Nel proprio progetto Supabase, eseguire **tutto** `supabase/schema.sql` nel SQL Editor, poi `supabase/verify.sql`. Lo schema è generato dalle migration ordinate in `supabase/migrations`, è riapplicabile e conserva gli Spot. Include metadati di revisione, vincoli, trigger `pending`, rate limit atomico, ricerca paginata e bucket privato `spot-images`. Per usare la cronologia CLI scegliere il percorso alternativo nella guida, senza mescolare i due metodi.
@@ -96,7 +97,7 @@ Sharp rimane il convertitore locale Node; il suo modulo nativo non può essere e
 
 **Verificare l’abilitazione e la tariffazione di Cloudflare Images nell’account prima di pubblicare.** Le chiamate al binding sono conteggiate come trasformazioni; [documentazione e costi del binding](https://developers.cloudflare.com/images/optimization/binding/). Il progetto non attiva abbonamenti automaticamente.
 
-La foto originale passa al convertitore; soltanto la WebP sanificata viene salvata nel bucket privato Supabase. La dashboard la recupera tramite `/api/admin/images/[id]`, con autorizzazione e `Cache-Control: private, no-store`. Nessun URL pubblico o signed URL permanente viene fornito al client.
+La foto originale passa al convertitore; soltanto la WebP sanificata viene salvata nel bucket privato Supabase. La dashboard la recupera tramite `/api/admin/images/[id]`, con autorizzazione e `Cache-Control: private, no-store`. Il feed recupera solo le foto degli Spot approvati e non archiviati tramite `/api/public/spots/[id]/image`: ogni richiesta ricontrolla lo stato e usa `Cache-Control: no-store`. Il bucket resta privato; nessun percorso Storage o signed URL viene esposto.
 
 ```sh
 npm run build:worker
@@ -118,7 +119,7 @@ Documentazione dell’adattatore: [OpenNext per Cloudflare](https://opennext.js.
 - Controllo Origin esatto e `Sec-Fetch-Site` sulle operazioni che modificano dati. Configurare un solo hostname canonico e redirigere gli altri.
 - Accettare `TRUSTED_IP_HEADER` soltanto dietro il proxy che lo sovrascrive. Un server Node direttamente esposto non può fidarsi di header inviati dal chiamante.
 - Cookie HttpOnly/Secure/SameSite Strict, allowlist UUID server, chiavi private protette da `server-only`, risposte admin non memorizzabili in cache.
-- CSP, protezione framing, `nosniff`, referrer disattivato, nessuna analitica o pubblicazione automatica. CSP conserva `unsafe-inline` per il bootstrap Next; i testi utente restano sempre escaped da React.
+- CSP, protezione framing, `nosniff`, referrer disattivato, nessuna analitica; ogni invio nasce pending e richiede approvazione prima di comparire nelle Novità. CSP conserva `unsafe-inline` per il bootstrap Next; i testi utente restano sempre escaped da React.
 - Errori dei provider senza segreti o contenuti nei log dell’app. L’osservabilità del Worker è mantenuta attiva come nel pannello Cloudflare; non registrare corpi richiesta o credenziali.
 
 ## Gestione e privacy prima dell’apertura
@@ -168,3 +169,29 @@ npm run check:deployment -- https://itispot.itispotted-official.workers.dev
 ```
 
 Il controllo legge pagine e immagini, verifica la protezione delle API e invia soltanto una richiesta vuota, sempre invalida. Il resoconto del ripristino pubblico è in `DEPLOY.md`.
+
+## Home e Novità
+
+La lettura pubblica è isolata in `src/lib/public-spots.ts`: seleziona sul server solo ID dello Spot, testo, data e riferimento alla foto, con filtro approved/non archiviato. Le pagine ricevono una proiezione esplicita senza informazioni di moderazione, autore o contatori anti-spam. Non servono nuove migration, policy pubbliche, variabili o un secondo sistema Storage.
+
+Approvare rende lo Spot visibile nelle Novità; rifiutare, archiviare o eliminare lo nasconde e blocca nuove richieste alla foto pubblica. L'API admin per le immagini mantiene la propria autorizzazione. Una copia già scaricata da un visitatore non può essere ritirata.
+
+Se il database è vuoto viene mostrato uno stato vuoto; se è irraggiungibile viene mostrato un errore controllato. Sondaggi, classifiche, curiosità, Arcade e Login/Profilo sono solo spazi dichiarati “in arrivo”. Commenti e reazioni non hanno logica né conteggi inventati. I test aggiunti verificano la separazione tra feed e coda, la revoca delle foto, la ricerca e le regressioni del form su `/invia`. Nessun deploy viene eseguito automaticamente.
+### Revisione visiva locale con cinque Spot di esempio
+
+`npm run dev:preview` apre una preview su `http://127.0.0.1:3187/?preview=filled`.
+La barra **Preview locale** permette di scegliere il primo Spot della Home
+(testo breve, immagine, testo lungo, verticale o orizzontale) e di provare gli
+stati con contenuti, vuoto, errore e caricamento. **Tutti gli Spot** e la ricerca
+mantengono la preview su `/novita`.
+
+I cinque esempi e le tre illustrazioni vengono generati in una cartella temporanea
+del sistema, rimossa alla chiusura della preview. Non vengono scritti nel database,
+nel bucket, nei file pubblici o in `.env.local`. Questa preview usa la modalità demo
+isolata anche per `/invia` e `/admin`; non collegarla ai servizi production.
+
+Sono necessari sia un avvio development sia la variabile interna
+`ITISPOT_PREVIEW_DIR` impostata dallo script. In produzione la preview è sempre
+disabilitata, anche se si forzano questa variabile e i parametri della URL.
+Le fixture non sono importate da Next e non entrano negli artefatti di build.
+Il normale `npm run dev` continua a mostrare i dati del flusso configurato.

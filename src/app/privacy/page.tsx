@@ -41,9 +41,12 @@ export default function Privacy() {
             </p>
             <h2>Chi può leggerlo</h2>
             <p>
-              Il team di moderazione. I messaggi e le immagini non hanno un
-              elenco pubblico. Approvare uno Spot non lo pubblica: per questo
-              MVP rimane nella dashboard.
+              Il team di moderazione può leggere gli invii. Solo gli Spot
+              approvati e non archiviati, con le eventuali immagini, sono
+              visibili pubblicamente nelle Novità come “Anonimo”. Gli altri
+              restano privati. Archiviare o rifiutare uno Spot ne interrompe
+              l’accesso pubblico dal sito; eventuali copie già salvate da chi
+              lo ha visto non possono essere ritirate automaticamente.
             </p>
             <h2>Anti-spam e anonimato</h2>
             <p>
