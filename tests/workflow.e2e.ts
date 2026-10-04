@@ -84,14 +84,27 @@ test("mobile submission, private image, moderation and logout", async ({
   await expect(
     page.getByText("Spot QA: grazie a chi rende questo spazio un bel posto."),
   ).toBeVisible();
-  for (const width of [320, 390]) {
+  for (const width of [320, 375, 768, 1024, 1280, 1440, 1728, 1920, 2560]) {
     await page.setViewportSize({ width, height: 844 });
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true);
+    const viewport = await page.evaluate(
+      () => document.documentElement.clientWidth,
+    );
+    const main = await page.locator(".admin-main").boundingBox();
+    const queue = await page.locator(".dashboard-window").boundingBox();
+    expect(main!.x).toBe(0);
+    expect(main!.width).toBe(viewport);
+    expect(queue!.width).toBeLessThanOrEqual(1600);
+    expect(Math.abs(queue!.x + queue!.width / 2 - viewport / 2)).toBeLessThan(
+      1,
+    );
+    if (width >= 1728) expect(queue!.width).toBeGreaterThanOrEqual(1500);
   }
+  await page.setViewportSize({ width: 375, height: 844 });
   await page.screenshot({
     path: testInfo.outputPath("admin-mobile.png"),
     fullPage: true,
@@ -185,7 +198,7 @@ test("full-width shells preserve readable content without overflow through ultra
           () => document.documentElement.scrollWidth <= innerWidth,
         ),
       ).toBe(true);
-      if (["/", "/novita", "/invia"].includes(path)) {
+      if (["/", "/novita", "/invia", "/admin"].includes(path)) {
         const shell = await page
           .locator(".site-shell,.portal-shell")
           .boundingBox();
@@ -210,6 +223,24 @@ test("full-width shells preserve readable content without overflow through ultra
             expect(
               await page
                 .locator(".site-shell")
+                .evaluate(
+                  (element) => getComputedStyle(element).backgroundSize,
+                ),
+            ).toBe("100% auto");
+        } else if (path === "/admin") {
+          await expect(page.locator(".login-layout")).toBeVisible();
+          const main = await page.locator(".admin-main").boundingBox();
+          const login = await page.locator(".login-layout").boundingBox();
+          expect(main!.x).toBe(0);
+          expect(main!.width).toBe(viewport);
+          expect(login!.width).toBeLessThanOrEqual(450);
+          expect(
+            Math.abs(login!.x + login!.width / 2 - viewport / 2),
+          ).toBeLessThan(1);
+          if (width >= 1600)
+            expect(
+              await page
+                .locator(".admin-shell")
                 .evaluate(
                   (element) => getComputedStyle(element).backgroundSize,
                 ),
