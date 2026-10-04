@@ -215,11 +215,11 @@ export function AdminDashboard({
       setModal(null);
       setNotice(
         {
-          approve: "Spot approvato. Nessuna pubblicazione effettuata.",
-          reject: "Spot rifiutato.",
-          archive: "Spot spostato in archivio.",
-          restore: "Spot ripristinato nella sua categoria.",
-          delete: "Spot e immagine eliminati.",
+          approve: "Spot approvato. Visibile nelle Novità se non archiviato.",
+          reject: "Spot rifiutato. Non visibile nelle Novità.",
+          archive: "Spot archiviato. Non visibile nelle Novità.",
+          restore: "Spot ripristinato. Visibile nelle Novità solo se approvato.",
+          delete: "Spot e immagine eliminati. Non visibile nelle Novità.",
         }[action],
       );
     } catch (e) {
@@ -327,8 +327,9 @@ export function AdminDashboard({
       <div className="moderation-note">
         <ShieldCheck size={18} />
         <span>
-          {demo ? "Demo locale · " : ""}Approvare uno Spot non lo pubblica. Ogni
-          decisione resta nella dashboard.
+          {demo ? "Demo locale · " : ""}Gli Spot nuovi entrano in attesa (pending).
+          Approvare uno Spot lo rende visibile nelle Novità se non archiviato.
+          Gli Spot rifiutati, archiviati o eliminati non sono visibili nel feed.
         </span>
       </div>
       <RetroWindow
