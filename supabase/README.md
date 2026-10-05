@@ -1,3 +1,5 @@
+> Account facoltativi: vedere [ACCOUNTS.md](ACCOUNTS.md) per nuova migration, RLS, sessioni ed email. Le sezioni seguenti descrivono il precedente step Spot V1.
+
 # Supabase per ITISpot
 
 ## Stato e confine di questo step

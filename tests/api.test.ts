@@ -66,6 +66,21 @@ afterEach(async () => {
   await rm(directory, { recursive: true, force: true });
 });
 describe("submission and moderation through real route handlers", () => {
+  it("ignores account cookies and injected author fields when saving a Spot", async () => {
+    const req = form("Logged-in anonymous Spot", {
+      user_id: "00000000-0000-4000-8000-000000000001",
+      username: "pixel.qa",
+    });
+    req.headers.set("cookie", "itispot_user=account-session");
+    const response = await submit(req);
+    expect(response.status).toBe(201);
+    expect((await response.json()).status).toBe("pending");
+    const saved = (await listSpots("all", "", 1)).spots[0];
+    expect(saved).not.toHaveProperty("user_id");
+    expect(saved).not.toHaveProperty("username");
+    expect(JSON.stringify(saved)).not.toContain("pixel.qa");
+  });
+
   it("saves a pending Spot, privately reads its sanitized image, moderates, archives, restores and deletes", async () => {
     const jpeg = await sharp({
       create: { width: 40, height: 30, channels: 3, background: "#0033ff" },

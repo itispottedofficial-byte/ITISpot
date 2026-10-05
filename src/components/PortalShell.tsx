@@ -1,5 +1,6 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
+import { AccountNav } from "./AccountNav";
 import { feedHref, type PreviewState } from "@/lib/presented-feed";
 import {
   ArrowUpRight,
@@ -11,7 +12,6 @@ import {
   Search,
   Star,
   Trophy,
-  UserRound,
   Disc3,
 } from "lucide-react";
 
@@ -87,7 +87,7 @@ export function Sidebar({
   active,
   preview,
 }: {
-  active: "home" | "novita";
+  active: "home" | "novita" | "account";
   preview?: PreviewState;
 }) {
   return (
@@ -137,16 +137,15 @@ export function Sidebar({
         <span className="sidebar-graffiti" aria-hidden="true">
           say it!
         </span>
-        <button
-          className="sidebar-item sidebar-profile"
-          disabled
-          title="Login / Profilo · in arrivo"
+        <Suspense
+          fallback={
+            <Link className="sidebar-item sidebar-profile" href="/login">
+              Login / Profilo
+            </Link>
+          }
         >
-          <UserRound size={21} aria-hidden="true" />
-          <span>
-            Login / Profilo<small>in arrivo</small>
-          </span>
-        </button>
+          <AccountNav />
+        </Suspense>
       </div>
     </aside>
   );
@@ -181,7 +180,7 @@ export function PortalShell({
   preview,
   children,
 }: {
-  active: "home" | "novita";
+  active: "home" | "novita" | "account";
   query?: string;
   preview?: PreviewState;
   children: ReactNode;

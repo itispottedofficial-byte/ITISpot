@@ -45,8 +45,8 @@ export default function Privacy() {
               approvati e non archiviati, con le eventuali immagini, sono
               visibili pubblicamente nelle Novità come “Anonimo”. Gli altri
               restano privati. Archiviare o rifiutare uno Spot ne interrompe
-              l’accesso pubblico dal sito; eventuali copie già salvate da chi
-              lo ha visto non possono essere ritirate automaticamente.
+              l’accesso pubblico dal sito; eventuali copie già salvate da chi lo
+              ha visto non possono essere ritirate automaticamente.
             </p>
             <h2>Anti-spam e anonimato</h2>
             <p>
@@ -54,6 +54,22 @@ export default function Privacy() {
               pubblica usa un codice HMAC dell’indirizzo IP senza salvarlo in
               chiaro. Hosting e Cloudflare possono trattare dati tecnici secondo
               le loro informative. L’anonimato assoluto non è garantito.
+            </p>
+            <h2>Account facoltativi</h2>
+            <p>
+              Per registrarti servono un’email privata, una password e uno
+              username. Supabase Auth gestisce credenziali e verifica email; il
+              profilo contiene username e date di creazione e aggiornamento.
+              L’avatar è generato localmente. Gli Spot non contengono
+              riferimenti al tuo account, anche quando sei connesso. Non esiste
+              una sezione “i miei Spot”.
+            </p>
+            <p>
+              Gli account usano cookie HttpOnly per mantenere la sessione, con
+              durata fino a 30 giorni e rinnovo durante l’uso. Logout termina la
+              sessione corrente. Le richieste di accesso sono limitate tramite
+              il controllo anti-abuso già presente; non aggiungiamo analytics o
+              tracciamento del profilo.
             </p>
             <h2>Cookie e servizi</h2>
             <p>

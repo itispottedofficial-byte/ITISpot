@@ -262,16 +262,13 @@ test("home navigation and public search keep future features inactive", async ({
   await expect(
     page.getByRole("heading", { name: "NOVITÀ", exact: true }),
   ).toBeVisible();
-  for (const label of [
-    "Curiosità",
-    "Classifiche",
-    "Sondaggi",
-    "Arcade",
-    "Login / Profilo",
-  ])
+  for (const label of ["Curiosità", "Classifiche", "Sondaggi", "Arcade"])
     await expect(
       page.getByRole("button", { name: new RegExp(label + " in arrivo") }),
     ).toBeDisabled();
+  await expect(
+    page.getByRole("link", { name: "Login / Profilo" }),
+  ).toHaveAttribute("href", "/login");
   await page.getByRole("link", { name: "Tutti gli Spot" }).click();
   await expect(page).toHaveURL(/\/novita$/);
   await page

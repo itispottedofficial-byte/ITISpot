@@ -27,6 +27,7 @@
   "type": "module",
   "dependencies": {
     "@opennextjs/cloudflare": "^1.20.7",
+    "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.2",
     "heic-convert": "^2.1.0",
     "heic-decode": "^2.1.0",
