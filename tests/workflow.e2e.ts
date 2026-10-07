@@ -95,7 +95,7 @@ test("mobile submission, private image, moderation and logout", async ({
       () => document.documentElement.clientWidth,
     );
     const main = await page.locator(".admin-main").boundingBox();
-    const queue = await page.locator(".dashboard-window").boundingBox();
+    const queue = await page.locator(".dashboard-window:not(.admin-comments)").boundingBox();
     expect(main!.x).toBe(0);
     expect(main!.width).toBe(viewport);
     expect(queue!.width).toBeLessThanOrEqual(1600);

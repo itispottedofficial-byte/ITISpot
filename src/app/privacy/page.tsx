@@ -71,6 +71,20 @@ export default function Privacy() {
               il controllo anti-abuso già presente; non aggiungiamo analytics o
               tracciamento del profilo.
             </p>
+            <h2>Commenti e segnalazioni</h2>
+            <p>
+              Per commentare o segnalare un commento devi accedere. I commenti
+              sono pubblici con il tuo username attuale, l’avatar e la data;
+              l’email resta privata. Commentare uno Spot non identifica chi lo
+              ha inviato. Non aggiungiamo riferimenti all’account negli Spot.
+            </p>
+            <p>
+              Puoi eliminare i tuoi commenti. Il team può nasconderli,
+              ripristinarli o eliminarli; i motivi delle segnalazioni restano
+              privati. La cancellazione di un account rimuove i suoi commenti e
+              le sue segnalazioni. Per limitare lo spam usiamo contatori
+              temporanei associati all’account, senza raccogliere nuovi IP.
+            </p>
             <h2>Cookie e servizi</h2>
             <p>
               Nessun cookie pubblicitario e nessuna analitica. La dashboard

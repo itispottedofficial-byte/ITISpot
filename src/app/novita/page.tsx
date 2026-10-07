@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { commentCounts } from "@/lib/comments";
 import { Suspense } from "react";
 import { FeedPreview } from "@/components/FeedPreview";
 import { FeedLoading } from "@/components/FeedLoading";
@@ -68,6 +69,9 @@ async function NovitaFeed({
   preview?: PreviewState;
 }) {
   const feed = await presentedFeed(query, page, preview);
+  const counts = preview
+    ? null
+    : await commentCounts(feed.spots.map((s) => s.id));
   const pages = Math.max(1, Math.ceil(feed.total / 24));
   const href = (next: number) =>
     feedHref("/novita", preview, {
@@ -84,7 +88,7 @@ async function NovitaFeed({
               title="ITISpot / una voce anonima"
               className="portal-window"
             >
-              <SpotCard spot={spot} />
+              <SpotCard spot={spot} commentCount={counts?.[spot.id]} />
             </RetroWindow>
           ))}
         </div>

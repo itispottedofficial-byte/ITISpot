@@ -1,5 +1,6 @@
 // Loopback-only Supabase HTTP contract fixture. Never imported by the application.
 // No external requests, real emails, real users or production credentials.
+import { commentsRequest } from "./comments-provider.mjs";
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
 
@@ -71,6 +72,18 @@ createServer(async (req, res) => {
   const fail = (message, code = "validation_failed", status = 400) =>
     send(status, { msg: message, message, code });
   const user = sessions.get(req.headers.authorization?.replace(/^Bearer /, ""));
+  if (
+    url.pathname.startsWith("/rest/v1/rpc/") ||
+    url.pathname === "/__test/comment-spot"
+  )
+    return commentsRequest({
+      url,
+      body,
+      user,
+      users,
+      service: req.headers.authorization === "Bearer fixture-service-key",
+      send,
+    });
   if (url.pathname === "/health") return send(200, { ok: true });
   if (url.pathname === "/__test/mail")
     return send(200, mail.get(url.searchParams.get("email")) || null);

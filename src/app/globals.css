@@ -100,3 +100,36 @@
 @media(max-width:700px){.sidebar-account{display:flex;align-items:center;justify-content:flex-end;gap:12px}.sidebar-account .account-avatar{width:26px;height:26px;font-size:10px}.sidebar-account .sidebar-profile>span:last-child{display:block;max-width:180px}.sidebar-account .sidebar-profile small{display:block;margin:2px 0 0}.account-logout-button{margin:0;font-size:11px}.account-layout{margin-bottom:10px}.account-intro h1{font-size:42px;letter-spacing:-2px}.account-window-content{padding:22px 18px}.account-window-content h2{font-size:22px}.profile-identity{gap:15px}.profile-identity h2{font-size:20px}.profile-identity .account-avatar{width:58px;height:58px;font-size:23px}.account-links{font-size:11px}.account-optional{font-size:11px}.account-optional strong{font-size:12px}}
 
 .account-resend{align-self:flex-start;min-height:32px;padding:4px 0;font:inherit;font-size:11px;line-height:1.5;color:#1644a4;text-decoration:underline;text-underline-offset:3px;background:none;border:0;cursor:pointer}
+
+/* Comments V1: native modal, same chrome/window vocabulary as the portal. */
+.comment-open{display:inline-flex;align-items:center;gap:8px;color:#124dcc;font:inherit;font-weight:800;border:0;background:transparent;cursor:pointer;padding:6px 0;}
+.comment-open span{padding:2px 7px;border:1px solid #8197c2;background:#e8f1ff;color:#091d48;}
+.comments-dialog{width:min(680px,calc(100% - 24px));max-width:none;max-height:calc(100dvh - 24px);padding:0;border:3px ridge #d3dcf0;background:#e9edf5;color:#10182e;box-shadow:8px 8px 0 #0008;overflow:auto;overscroll-behavior:contain;}
+.comments-dialog::backdrop{background:#020817c9;}
+.comments-dialog .dialog-title{position:sticky;top:0;z-index:2;}
+.comments-body{padding:22px;min-width:0;}
+.comments-body h2{font-size:1.35rem;margin:0 0 12px;}
+.comment-note{font-size:.85rem;color:#3c4e70;margin:0 0 20px;}
+.comment-item{padding:18px 0;border-bottom:1px dashed #899ab6;min-width:0;}
+.comment-item header{display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap;}
+.comment-item header>div{min-width:0;flex:1;}
+.comment-item strong{display:block;overflow-wrap:anywhere;}
+.comment-item time{display:block;font-size:.75rem;color:#475776;margin-top:3px;}
+.comment-content,.comment-reports p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65;margin:12px 0;}
+.comment-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:12px;}
+.comment-actions button,.comment-actions a{min-height:40px;}
+.comment-compose,.comment-report{margin-top:20px;display:grid;gap:8px;}
+.comment-compose label,.comment-report label{font-weight:700;}
+.comment-compose textarea,.comment-report textarea{display:block;width:100%;min-height:100px;resize:vertical;padding:12px;color:#10182e;background:white;border:2px inset #aebcda;font:inherit;}
+.comment-compose .comment-actions{justify-content:space-between;}
+.comment-confirm,.comment-auth{padding:16px;border:2px inset #aebcda;background:#f8fbff;margin-top:12px;}
+.comment-empty{padding:20px 0;color:#43516c;}
+.comment-status{font-size:.8rem;font-weight:700;padding:4px 8px;background:#cddbff;color:#102c62;}
+.admin-comments{margin-top:28px;}
+.admin-comments .comment-actions [aria-pressed=true]{background:#164ddb;color:white;}
+.comment-reports{padding-left:22px;}
+.comments-dialog :focus-visible,.admin-comments :focus-visible,.comment-open:focus-visible{outline:3px solid #005aff;outline-offset:3px;}
+@media(max-width:480px){.comments-body{padding:14px;}.comments-dialog{width:calc(100% - 12px);max-height:calc(100dvh - 12px);}.comment-actions{gap:8px;}.comment-item{padding:14px 0;}}
+.comments-dialog{inset:0;margin:auto;font-size:1rem;font-weight:400;line-height:1.5;}
+.comments-dialog .text-button,.admin-comments .text-button{font-size:.85rem;color:#19346c;}
+.comments-dialog .delete-action,.admin-comments .delete-action{color:#a3213d;}

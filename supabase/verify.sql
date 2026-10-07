@@ -107,3 +107,36 @@ select policyname, permissive, roles, cmd, qual, with_check from pg_policies whe
 select 'ITISpot profiles, grants, triggers and RLS checks passed' as profiles_result;
 select 'ITISpot schema, grants, RPC and Storage checks passed' as result;
 rollback;
+
+-- Comments V1: run only after 20261005000100_comments.sql has been installed.
+begin read only;
+do $$ declare r text; t text; f text; op text; begin
+ foreach t in array array['comments','comment_reports'] loop
+  if not exists(select 1 from pg_class where oid=('public.'||t)::regclass and relrowsecurity) then raise exception 'Comments RLS missing'; end if;
+  foreach r in array array['anon','authenticated'] loop
+   foreach op in array array['INSERT','UPDATE','DELETE','TRUNCATE'] loop
+    if op in ('INSERT','UPDATE') then
+     if has_any_column_privilege(r,'public.'||t,op) then raise exception 'Unexpected writable comment column'; end if;
+    end if;
+    if has_table_privilege(r,'public.'||t,op) then raise exception 'Unexpected comment write grant'; end if;
+   end loop;
+   if has_column_privilege(r,'public.'||t,'user_id','SELECT') then raise exception 'Public author identity leak'; end if;
+  end loop;
+  if (select count(*) from pg_policies where schemaname='public' and tablename=t and permissive='RESTRICTIVE' and policyname in(t||'_insert_guard',t||'_update_guard',t||'_delete_guard'))<>3 then raise exception 'Comment write guards missing'; end if;
+ end loop;
+ if has_table_privilege('anon','public.comment_reports','SELECT') or has_table_privilege('authenticated','public.comment_reports','SELECT') then raise exception 'Reports exposed'; end if;
+ if not exists(select 1 from pg_policies where schemaname='public' and tablename='comments' and policyname='comments_visibility_guard' and permissive='RESTRICTIVE' and qual like '%comment_spot_visible%') then raise exception 'Comment visibility guard missing'; end if;
+ foreach f in array array['comment_spot_visible(uuid)','list_comments(uuid,integer)','comment_counts(uuid[])','create_comment(uuid,text)','delete_own_comment(uuid)','report_comment(uuid,text)','admin_comments_page(text,integer)','moderate_comment(uuid,text)'] loop
+  if not exists(select 1 from pg_proc where oid=('public.'||f)::regprocedure and prosecdef and proconfig @> array['search_path=""']) then raise exception 'Unsafe comment function: %',f; end if;
+ end loop;
+ foreach f in array array['create_comment(uuid,text)','delete_own_comment(uuid)','report_comment(uuid,text)'] loop
+  if has_function_privilege('anon','public.'||f,'EXECUTE') or not has_function_privilege('authenticated','public.'||f,'EXECUTE') then raise exception 'Comment writer grants incorrect'; end if;
+ end loop;
+ foreach f in array array['admin_comments_page(text,integer)','moderate_comment(uuid,text)'] loop
+  if has_function_privilege('anon','public.'||f,'EXECUTE') or has_function_privilege('authenticated','public.'||f,'EXECUTE') or not has_function_privilege('service_role','public.'||f,'EXECUTE') then raise exception 'Comment admin grants incorrect'; end if;
+ end loop;
+ if (select count(*) from pg_constraint where conrelid='public.comments'::regclass and contype='f' and confdeltype='c')<>2 then raise exception 'Comment cascades missing'; end if;
+ if exists(select 1 from information_schema.columns where table_schema='public' and table_name='spots' and column_name in ('user_id','profile_id','username','email')) then raise exception 'Spot anonymity regression'; end if;
+end $$;
+select 'ITISpot comments, grants, RLS and RPC checks passed' as comments_result;
+rollback;
