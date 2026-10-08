@@ -75,6 +75,8 @@ export async function verifyTurnstile(
     "https://challenges.cloudflare.com/turnstile/v0/siteverify",
     {
       method: "POST",
+      // Every verification must reach the provider; tokens are single-use.
+      cache: "no-store",
       body: new URLSearchParams({
         secret: process.env.TURNSTILE_SECRET_KEY!,
         response: token,

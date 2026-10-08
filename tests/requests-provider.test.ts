@@ -32,7 +32,7 @@ const req = (method: string, url: string, body?: unknown, cookie = "") =>
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
-let calls: { url: URL; method: string; body: Record<string, unknown> | null }[];
+let calls: { url: URL; method: string; body: Record<string, unknown> | null; cache?: RequestCache }[];
 let fail = false,
   normal = false,
   limited = false;
@@ -49,7 +49,7 @@ beforeEach(() => {
       const method = init?.method || "GET";
       const body =
         typeof init?.body === "string" ? JSON.parse(init.body) : null;
-      calls.push({ url, method, body });
+      calls.push({ url, method, body, cache: init?.cache });
       if (url.hostname === "challenges.cloudflare.com")
         return Response.json({
           success: true,
@@ -113,6 +113,7 @@ it("production create uses strict request Turnstile and isolated quota, never re
     "/turnstile/v0/siteverify",
     "/rest/v1/requests",
   ]);
+  expect(calls[1].cache).toBe("no-store");
   expect(calls[0].body).toMatchObject({ p_limit: 3, p_window_seconds: 600 });
   expect(calls[0].body?.p_key).toMatch(/^requests:[a-f0-9]{64}$/);
   expect(calls[2].body).toEqual({ category: "BUG", content: "Example bug 🙂" });
