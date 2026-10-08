@@ -1,4 +1,5 @@
 "use client";
+import { AdminRequests } from "./AdminRequests";
 import { AdminComments } from "./AdminComments";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -547,6 +548,7 @@ export function AdminDashboard({
         </div>
       </RetroWindow>
       <AdminComments />
+      <AdminRequests />
       <dialog
         ref={dialog}
         aria-labelledby="dialog-heading"

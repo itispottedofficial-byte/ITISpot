@@ -59,10 +59,10 @@ export async function boundedForm(req: NextRequest) {
     throw new HttpError(400, "Invio non valido. Riprova.");
   }
 }
-export async function boundedJson(req: NextRequest) {
+export async function boundedJson(req: NextRequest, maxBytes = 4096) {
   if (!req.headers.get("content-type")?.startsWith("application/json"))
     throw new HttpError(415, "Formato di richiesta non valido.");
-  const body = await boundedBody(req, 4096);
+  const body = await boundedBody(req, maxBytes);
   try {
     return JSON.parse(new TextDecoder().decode(body));
   } catch {

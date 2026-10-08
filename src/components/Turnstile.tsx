@@ -16,7 +16,7 @@ export function Turnstile({
 }: {
   onToken: (token: string) => void;
   siteKey: string;
-  action?: "spot-submit" | "admin-login";
+  action?: "spot-submit" | "admin-login" | "request-submit";
 }) {
   const ref = useRef<HTMLDivElement>(null),
     widget = useRef<string>(undefined);

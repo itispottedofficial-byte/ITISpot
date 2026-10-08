@@ -2,7 +2,9 @@ import "server-only";
 import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
 import path from "node:path";
 import type { Spot } from "./types";
+import type { PrivateRequest } from "./request-validation";
 interface State {
+  requests?: PrivateRequest[];
   spots: Spot[];
   limits: Record<string, { count: number; reset: number }>;
 }

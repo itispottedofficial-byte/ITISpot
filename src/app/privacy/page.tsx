@@ -85,6 +85,22 @@ export default function Privacy() {
               le sue segnalazioni. Per limitare lo spam usiamo contatori
               temporanei associati all’account, senza raccogliere nuovi IP.
             </p>
+            <h2>Richieste &amp; Suggerimenti</h2>
+            <p>
+              Puoi inviare una richiesta senza account. Categoria, messaggio,
+              date e stato sono conservati per permettere al team di leggerla e
+              gestirla. Le richieste e le note interne sono visibili solo agli
+              amministratori: non vengono pubblicate e non sono associate
+              automaticamente al profilo, nemmeno quando sei connesso.
+            </p>
+            <p>
+              Non inserire nel messaggio dati personali inutili. La prevenzione
+              degli abusi riusa Turnstile e contatori temporanei separati con un
+              codice HMAC dell’IP, senza conservare l’IP in chiaro nella
+              richiesta. Non aggiungiamo tracciamento. Le richieste restano
+              conservate finché un amministratore le elimina; l’anonimato
+              assoluto non è garantito.
+            </p>
             <h2>Cookie e servizi</h2>
             <p>
               Nessun cookie pubblicitario e nessuna analitica. La dashboard

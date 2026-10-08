@@ -8,6 +8,7 @@ import {
   Gamepad2,
   Home,
   Lightbulb,
+  MessageSquare,
   Send,
   Search,
   Star,
@@ -87,7 +88,7 @@ export function Sidebar({
   active,
   preview,
 }: {
-  active: "home" | "novita" | "account";
+  active: "home" | "novita" | "account" | "requests";
   preview?: PreviewState;
 }) {
   return (
@@ -131,6 +132,15 @@ export function Sidebar({
             size={16}
             aria-hidden="true"
           />
+        </Link>
+        <Link
+          href="/richieste"
+          className={`sidebar-item sidebar-requests ${active === "requests" ? "is-active" : ""}`}
+          aria-current={active === "requests" ? "page" : undefined}
+          title="Richieste & Suggerimenti"
+        >
+          <MessageSquare size={21} aria-hidden="true" />
+          <span>Richieste</span>
         </Link>
       </nav>
       <div className="sidebar-bottom">
@@ -180,7 +190,7 @@ export function PortalShell({
   preview,
   children,
 }: {
-  active: "home" | "novita" | "account";
+  active: "home" | "novita" | "account" | "requests";
   query?: string;
   preview?: PreviewState;
   children: ReactNode;

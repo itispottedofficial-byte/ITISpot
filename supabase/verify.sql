@@ -140,3 +140,30 @@ do $$ declare r text; t text; f text; op text; begin
 end $$;
 select 'ITISpot comments, grants, RLS and RPC checks passed' as comments_result;
 rollback;
+
+-- Requests V1: read-only audit, after 20261008000100_requests.sql.
+begin read only;
+do $$ declare r text; op text; cols text[]; begin
+ if not exists(select 1 from pg_class where oid='public.requests'::regclass and relrowsecurity) then raise exception 'Requests RLS missing'; end if;
+ select array_agg(column_name::text order by column_name) into cols from information_schema.columns where table_schema='public' and table_name='requests';
+ if cols <> array['admin_note','category','content','created_at','id','reviewed_at','status','updated_at'] then raise exception 'Unexpected request columns or identity association'; end if;
+ foreach r in array array['anon','authenticated'] loop
+  foreach op in array array['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER'] loop
+   if has_table_privilege(r,'public.requests',op) then raise exception 'Requests client table grant: % %',r,op; end if;
+   if op in ('SELECT','INSERT','UPDATE','REFERENCES') and has_any_column_privilege(r,'public.requests',op) then raise exception 'Requests client column grant'; end if;
+  end loop;
+  if has_function_privilege(r,'public.itispot_request_metadata()','EXECUTE') then raise exception 'Request trigger callable by client'; end if;
+ end loop;
+ if not exists(select 1 from pg_policies where schemaname='public' and tablename='requests' and policyname='requests_private_guard' and permissive='RESTRICTIVE' and cmd='ALL' and qual='false' and with_check='false' and roles @> array['anon','authenticated']::name[]) then raise exception 'Requests private guard missing'; end if;
+ if exists(select 1 from pg_policies where schemaname='public' and tablename='requests' and permissive='PERMISSIVE') then raise exception 'Unexpected requests permissive policy'; end if;
+ if not has_table_privilege('service_role','public.requests','SELECT') or not has_table_privilege('service_role','public.requests','DELETE') or not has_column_privilege('service_role','public.requests','content','INSERT') or not has_column_privilege('service_role','public.requests','category','INSERT') or not has_column_privilege('service_role','public.requests','status','UPDATE') or not has_column_privilege('service_role','public.requests','admin_note','UPDATE') then raise exception 'Requests server grants missing'; end if;
+ if has_column_privilege('service_role','public.requests','status','INSERT') or has_column_privilege('service_role','public.requests','content','UPDATE') then raise exception 'Requests server grants too broad'; end if;
+ if not exists(select 1 from pg_proc where oid='public.itispot_request_metadata()'::regprocedure and not prosecdef and proconfig @> array['search_path=""']) then raise exception 'Unsafe request metadata function'; end if;
+ if not exists(select 1 from pg_trigger where tgrelid='public.requests'::regclass and tgname='requests_metadata' and tgenabled='O' and tgfoid='public.itispot_request_metadata()'::regprocedure) then raise exception 'Request metadata trigger missing'; end if;
+ if (select count(*) from pg_constraint where conrelid='public.requests'::regclass and conname in ('requests_category_check','requests_content_check','requests_status_check','requests_note_check'))<>4 then raise exception 'Requests constraints missing'; end if;
+ if (select count(*) from pg_indexes where schemaname='public' and tablename='requests' and indexname in ('requests_status_created_idx','requests_created_idx'))<>2 then raise exception 'Requests indexes missing'; end if;
+ if not exists(select 1 from information_schema.columns where table_schema='public' and table_name='requests' and column_name='status' and column_default='''NEW''::text') then raise exception 'Request default status incorrect'; end if;
+ if exists(select 1 from pg_constraint where conrelid='public.requests'::regclass and contype='f') then raise exception 'Unexpected request relationship'; end if;
+end $$;
+select 'ITISpot requests, grants, RLS and metadata checks passed' as requests_result;
+rollback;

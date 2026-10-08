@@ -45,6 +45,7 @@ export const config = {
   matcher: [
     "/",
     "/novita",
+    "/richieste",
     "/login",
     "/registrati",
     "/profilo",

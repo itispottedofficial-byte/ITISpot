@@ -66,7 +66,7 @@ export async function rateLimit(
 }
 export async function verifyTurnstile(
   token: string,
-  action: "spot-submit" | "admin-login" = "spot-submit",
+  action: "spot-submit" | "admin-login" | "request-submit" = "spot-submit",
 ) {
   if (mode() === "demo" && !process.env.TURNSTILE_SECRET_KEY) return;
   if (!token || token.length > 2048)
