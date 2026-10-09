@@ -75,8 +75,6 @@ export async function verifyTurnstile(
     "https://challenges.cloudflare.com/turnstile/v0/siteverify",
     {
       method: "POST",
-      // Every verification must reach the provider; tokens are single-use.
-      cache: "no-store",
       body: new URLSearchParams({
         secret: process.env.TURNSTILE_SECRET_KEY!,
         response: token,
@@ -97,6 +95,24 @@ export async function verifyTurnstile(
       400,
       "Controllo anti-spam scaduto o non valido. Riprova.",
     );
+  if (action === "request-submit" && mode() === "supabase") {
+    // Consume atomically across Workers even if an upstream verification
+    // response accepts a previously used token. Store only a keyed hash.
+    const issued = Date.parse(result.challenge_ts);
+    const age = Date.now() - issued;
+    if (!Number.isFinite(issued) || age > 300_000 || age < -30_000)
+      throw new HttpError(400, "Controllo anti-spam scaduto o non valido. Riprova.");
+    const digest = createHmac("sha256", secret()).update(token).digest("hex");
+    const { data, error } = await supabase().rpc("consume_rate_limit", {
+      p_key: `request-turnstile:${digest}`,
+      p_limit: 1,
+      p_window_seconds: 600,
+    });
+    if (error)
+      throw new HttpError(503, "Controllo anti-spam non disponibile. Riprova.");
+    if (data !== true)
+      throw new HttpError(400, "Controllo anti-spam scaduto o non valido. Riprova.");
+  }
 }
 export function demoSession() {
   const value = `demo:${Date.now() + 3600000}`;

@@ -69,3 +69,7 @@ Turnstile action/hostname/missing/invalid/reused-token cases use controlled prov
 ## Release scope — 2026-10-08
 
 The Requests-only release is validated separately from the uncommitted local Turnstile test-mode work. It contains 170 automatic tests and 12 browser tests; the additional 16 local Turnstile simulation tests are deliberately excluded together with their implementation. Remote Supabase migration and audit were applied manually and remote Requests flows were tested with the local app. Real production Turnstile acceptance is checked after deployment on the public domain, without dummy keys or verifier changes.
+
+## Requests production replay protection
+
+Requests additionally checks `challenge_ts` (5-minute validity, at most 30 seconds of future clock skew) after the existing provider/action/hostname checks. The existing atomic `consume_rate_limit` RPC consumes `request-turnstile:<HMAC-SHA256(token)>` once for 600 seconds. This rejects concurrent and sequential replays even if Siteverify repeats a success response. Only a keyed hash is retained in the existing temporary quota store; no token or account relation is stored. Existing expired-counter cleanup applies. No new SQL or environment configuration is required. Spot and admin Turnstile flows are unchanged.

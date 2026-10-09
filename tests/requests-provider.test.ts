@@ -32,13 +32,17 @@ const req = (method: string, url: string, body?: unknown, cookie = "") =>
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
-let calls: { url: URL; method: string; body: Record<string, unknown> | null; cache?: RequestCache }[];
+let calls: { url: URL; method: string; body: Record<string, unknown> | null }[];
+let usedTokens: Set<string>;
+let challengeTimestamp: string;
 let fail = false,
   normal = false,
   limited = false;
 beforeEach(() => {
   for (const [k, v] of Object.entries(env)) vi.stubEnv(k, v);
   calls = [];
+  usedTokens = new Set();
+  challengeTimestamp = new Date().toISOString();
   fail = false;
   normal = false;
   limited = false;
@@ -49,17 +53,25 @@ beforeEach(() => {
       const method = init?.method || "GET";
       const body =
         typeof init?.body === "string" ? JSON.parse(init.body) : null;
-      calls.push({ url, method, body, cache: init?.cache });
+      calls.push({ url, method, body });
       if (url.hostname === "challenges.cloudflare.com")
         return Response.json({
           success: true,
+          challenge_ts: challengeTimestamp,
           hostname: "itispot.example",
           action: "request-submit",
         });
       if (url.pathname === "/auth/v1/user")
         return Response.json({ id: normal ? id : admin });
-      if (url.pathname === "/rest/v1/rpc/consume_rate_limit")
+      if (url.pathname === "/rest/v1/rpc/consume_rate_limit") {
+        const key = String(body?.p_key || "");
+        if (key.startsWith("request-turnstile:")) {
+          const fresh = !usedTokens.has(key);
+          usedTokens.add(key);
+          return Response.json(fresh);
+        }
         return Response.json(!limited);
+      }
       if (url.pathname === "/rest/v1/requests") {
         if (fail)
           return Response.json(
@@ -111,13 +123,15 @@ it("production create uses strict request Turnstile and isolated quota, never re
   expect(calls.map((c) => c.url.pathname)).toEqual([
     "/rest/v1/rpc/consume_rate_limit",
     "/turnstile/v0/siteverify",
+    "/rest/v1/rpc/consume_rate_limit",
     "/rest/v1/requests",
   ]);
-  expect(calls[1].cache).toBe("no-store");
   expect(calls[0].body).toMatchObject({ p_limit: 3, p_window_seconds: 600 });
   expect(calls[0].body?.p_key).toMatch(/^requests:[a-f0-9]{64}$/);
-  expect(calls[2].body).toEqual({ category: "BUG", content: "Example bug 🙂" });
-  expect(calls[2].url.search).toBe("");
+  expect(calls[2].body).toMatchObject({ p_limit: 1, p_window_seconds: 600 });
+  expect(calls[2].body?.p_key).toMatch(/^request-turnstile:[a-f0-9]{64}$/);
+  expect(calls[3].body).toEqual({ category: "BUG", content: "Example bug 🙂" });
+  expect(calls[3].url.search).toBe("");
 });
 it("production rate denial stops before Turnstile/storage", async () => {
   limited = true;
@@ -202,4 +216,18 @@ it("ordinary authenticated UID cannot access admin requests even using an admin 
     ).status,
   ).toBe(401);
   expect(calls.every((c) => c.url.pathname === "/auth/v1/user")).toBe(true);
+});
+
+it("rejects concurrent replay even when the provider repeats success", async () => {
+  const body = { category: "BUG", content: "Replay verification", turnstile: "same-real-token" };
+  const results = await Promise.all([POST(req("POST", "/api/requests", body)), POST(req("POST", "/api/requests", body))]);
+  expect(results.map(r => r.status).sort()).toEqual([201, 400]);
+  expect(calls.filter(c => c.url.pathname === "/rest/v1/requests" && c.method === "POST")).toHaveLength(1);
+  expect(JSON.stringify(calls.filter(c => c.url.pathname.includes("consume_rate_limit")))).not.toContain(body.turnstile);
+});
+it.each(["invalid", new Date(Date.now() - 301000).toISOString(), new Date(Date.now() + 60000).toISOString()])("rejects invalid, expired or future challenge timestamps %s", async (timestamp) => {
+  challengeTimestamp = timestamp;
+  const r = await POST(req("POST", "/api/requests", { category: "BUG", content: "Expired challenge", turnstile: "old-token" }));
+  expect(r.status).toBe(400);
+  expect(calls.some(c => c.url.pathname === "/rest/v1/requests")).toBe(false);
 });
