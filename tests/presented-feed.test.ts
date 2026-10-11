@@ -4,10 +4,10 @@ import path from "node:path";
 import sharp from "sharp";
 import { preparePreviewData } from "../scripts/ui-preview-fixtures.mjs";
 import { feedHref, presentedFeed, previewState } from "@/lib/presented-feed";
-import { publicFeed } from "@/lib/public-spots";
+import { rankedFeed } from "@/lib/public-spots";
 
 vi.mock("@/lib/public-spots", () => ({
-  publicFeed: vi.fn(async () => ({ spots: [], total: 0, available: true })),
+  rankedFeed: vi.fn(async () => ({ spots: [], total: 0, available: true })),
 }));
 let directory: string | undefined;
 afterEach(async () => {
@@ -36,7 +36,7 @@ it("never serves preview data in production even with forced env, URL and intern
   expect(
     await presentedFeed("real query", 2, { mode: "filled", featured: "a" }),
   ).toEqual({ spots: [], total: 0, available: true });
-  expect(publicFeed).toHaveBeenCalledWith("real query", 2);
+  expect(rankedFeed).toHaveBeenCalledWith("real query", 2, "recent");
   await expect(preparePreviewData()).rejects.toThrow(
     "Preview disabled in production",
   );
@@ -65,7 +65,7 @@ it("generates exactly five local cases with safe text and three image proportion
   expect(stored).not.toMatch(
     /user_id|ip_address|rejection_reason|service_role/,
   );
-  expect(publicFeed).not.toHaveBeenCalled();
+  expect(rankedFeed).not.toHaveBeenCalled();
 });
 it("handles preview search, featured content, empty and error without touching the repository", async () => {
   vi.stubEnv("NODE_ENV", "test");
@@ -92,5 +92,5 @@ it("handles preview search, featured content, empty and error without touching t
     feedHref("/novita", { mode: "filled", featured: "e" }, { q: "test" }),
   ).toBe("/novita?preview=filled&featured=e&q=test");
   expect(feedHref("/novita")).toBe("/novita");
-  expect(publicFeed).not.toHaveBeenCalled();
+  expect(rankedFeed).not.toHaveBeenCalled();
 });

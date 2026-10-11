@@ -4,6 +4,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = "https://itispot.dpdns.org";
 
   return [
+    { url: `${baseUrl}/sondaggi`, changeFrequency: "daily", priority: 0.7 },
     {
       url: `${baseUrl}/`,
       lastModified: new Date(),
@@ -11,7 +12,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1,
     },
     {
-      url: `${baseUrl}/novita`,
+      url: `${baseUrl}/spotted`,
       lastModified: new Date(),
       changeFrequency: "hourly",
       priority: 0.9,

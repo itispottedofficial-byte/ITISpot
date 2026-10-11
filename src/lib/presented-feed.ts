@@ -1,7 +1,12 @@
 import "server-only";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { publicFeed, type PublicFeed, type PublicSpot } from "./public-spots";
+import {
+  rankedFeed,
+  type FeedSort,
+  type PublicFeed,
+  type PublicSpot,
+} from "./public-spots";
 
 export type PreviewState = {
   mode: "filled" | "empty" | "error" | "loading";
@@ -26,7 +31,7 @@ export function previewState(params: FeedParams): PreviewState | undefined {
   };
 }
 export function feedHref(
-  route: "/" | "/novita",
+  route: "/" | "/novita" | "/spotted",
   preview?: PreviewState,
   extra: Record<string, string> = {},
 ) {
@@ -40,13 +45,14 @@ export async function presentedFeed(
   query = "",
   page = 1,
   preview?: PreviewState,
+  sort: FeedSort = "recent",
 ): Promise<PublicFeed> {
   if (
     !preview ||
     process.env.NODE_ENV === "production" ||
     !process.env.ITISPOT_PREVIEW_DIR
   )
-    return publicFeed(query, page);
+    return rankedFeed(query, page, sort);
   if (preview.mode === "empty" || preview.mode === "error")
     return { spots: [], total: 0, available: preview.mode === "empty" };
   if (preview.mode === "loading")

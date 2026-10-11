@@ -500,3 +500,186 @@ drop trigger if exists requests_metadata on public.requests;
 create trigger requests_metadata before insert or update on public.requests for each row execute function public.itispot_request_metadata();
 comment on table public.requests is 'Private requests: no account/Spot linkage, no public access. Server validates origin, Turnstile request-submit and requests rate limit.';
 commit;
+
+-- Migration: 20261010000100_spot_likes.sql
+-- Likes are interactions, never authorship. Raw voter lists are private.
+begin;
+create table if not exists public.spot_likes (
+ spot_id uuid not null references public.spots(id) on delete cascade,
+ user_id uuid not null references auth.users(id) on delete cascade,
+ created_at timestamptz not null default now(),
+ primary key(spot_id,user_id)
+);
+create index if not exists spot_likes_user on public.spot_likes(user_id);
+create index if not exists spot_likes_week on public.spot_likes(created_at desc,spot_id);
+alter table public.spot_likes enable row level security;
+revoke all on public.spot_likes from public,anon,authenticated;
+grant all on public.spot_likes to service_role;
+drop policy if exists likes_private on public.spot_likes;
+create policy likes_private on public.spot_likes as restrictive for all to anon,authenticated using(false) with check(false);
+create or replace function public.spot_like_stats(p_spots uuid[]) returns jsonb
+language plpgsql stable security definer set search_path='' as $$ begin
+ if p_spots is null or cardinality(p_spots)>24 then raise exception 'Invalid batch' using errcode='22023'; end if;
+ return (select coalesce(jsonb_object_agg(s.id,jsonb_build_object('count',(select count(*) from public.spot_likes l where l.spot_id=s.id),'liked',exists(select 1 from public.spot_likes l where l.spot_id=s.id and l.user_id=auth.uid()))),'{}'::jsonb) from public.spots s where s.id=any(p_spots) and s.status='approved' and s.archived_at is null);
+end $$;
+create or replace function public.set_spot_like(p_spot uuid,p_liked boolean) returns jsonb
+language plpgsql security definer set search_path='' as $$
+declare actor uuid:=auth.uid(); begin
+ if actor is null then raise exception 'Login required' using errcode='42501'; end if;
+ if p_liked is null then raise exception 'Invalid like' using errcode='22023'; end if;
+ perform 1 from public.spots where id=p_spot and status='approved' and archived_at is null for share;
+ if not found then raise exception 'Spot unavailable' using errcode='P0002'; end if;
+ -- Serialise opposing operations on the same pair. A retry of the same desired
+ -- state is idempotent and never renews the original like timestamp.
+ perform pg_advisory_xact_lock(hashtextextended('like:'||p_spot::text||actor::text,0));
+ if not public.consume_rate_limit('spot-like:'||actor::text,30,60) then raise exception 'Too many likes' using errcode='P0429'; end if;
+ if p_liked then insert into public.spot_likes(spot_id,user_id) values(p_spot,actor) on conflict do nothing;
+ else delete from public.spot_likes where spot_id=p_spot and user_id=actor; end if;
+ return public.spot_like_stats(array[p_spot])->p_spot::text;
+end $$;
+-- Bounded archive projection. No account, moderation or import metadata.
+create or replace function public.ranked_spots(p_search text default '',p_page integer default 1,p_sort text default 'recent') returns jsonb
+language plpgsql stable security definer set search_path='' as $$
+declare result jsonb; begin
+ if p_page is null or p_page not between 1 and 100000 or p_sort is null or p_sort not in ('recent','likes','comments','trending') or p_search is null or char_length(p_search)>500 then raise exception 'Invalid filter' using errcode='22023'; end if;
+ with candidates as (
+ select s.id,s.text,s.created_at,s.image_path,
+ (select count(*) from public.spot_likes l where l.spot_id=s.id) likes,
+ (select count(*) from public.comments c where c.spot_id=s.id and c.status='visible') comments,
+ (select count(*) from public.spot_likes l where l.spot_id=s.id and l.created_at>=now()-interval '7 days' and l.created_at<=now()) weekly
+ from public.spots s where s.status='approved' and s.archived_at is null and strpos(lower(s.text),lower(btrim(p_search)))>0
+ ), eligible as (select * from candidates where p_sort<>'trending' or weekly>0), page as (
+ select * from eligible order by case p_sort when 'likes' then likes when 'comments' then comments when 'trending' then weekly else 0 end desc,created_at desc,id desc limit 24 offset (p_page-1)*24
+ ) select jsonb_build_object('total',(select count(*) from eligible),'spots',coalesce((select jsonb_agg(to_jsonb(p) order by case p_sort when 'likes' then likes when 'comments' then comments when 'trending' then weekly else 0 end desc,created_at desc,id desc) from page p),'[]'::jsonb)) into result;
+ return result;
+end $$;
+revoke all on function public.spot_like_stats(uuid[]),public.set_spot_like(uuid,boolean),public.ranked_spots(text,integer,text) from public,anon,authenticated;
+grant execute on function public.spot_like_stats(uuid[]) to anon,authenticated,service_role;
+grant execute on function public.set_spot_like(uuid,boolean) to authenticated;
+grant execute on function public.ranked_spots(text,integer,text) to service_role;
+commit;
+
+-- Migration: 20261010000200_polls.sql
+-- Anonymous polls. No auth/profile FK or identifying data in votes.
+begin;
+create table if not exists public.polls (
+ id uuid primary key default gen_random_uuid(),
+ question text not null check(char_length(btrim(question)) between 5 and 300),
+ status text not null default 'DRAFT' check(status in ('DRAFT','PUBLISHED','CLOSED')),
+ featured boolean not null default false,
+ created_at timestamptz not null default now(),
+ updated_at timestamptz not null default now(),
+ closes_at timestamptz,
+ check(not featured or status='PUBLISHED'),
+ check(closes_at is null or closes_at>created_at)
+);
+create unique index if not exists polls_one_featured on public.polls(featured) where featured;
+create index if not exists polls_public_order on public.polls(created_at desc,id desc) where status<>'DRAFT';
+create table if not exists public.poll_options (
+ id uuid primary key default gen_random_uuid(),
+ poll_id uuid not null references public.polls(id) on delete cascade,
+ position smallint not null check(position between 0 and 5),
+ label text not null check(char_length(btrim(label)) between 1 and 150),
+ unique(poll_id,position),unique(poll_id,id)
+);
+create unique index if not exists poll_options_unique_label on public.poll_options(poll_id,lower(btrim(label)));
+create table if not exists public.poll_votes (
+ poll_id uuid not null references public.polls(id) on delete cascade,
+ option_id uuid not null,
+ voter_hash text not null check(voter_hash ~ '^[a-f0-9]{64}$'),
+ created_at timestamptz not null default now(),
+ primary key(poll_id,voter_hash),
+ foreign key(poll_id,option_id) references public.poll_options(poll_id,id)
+);
+create index if not exists poll_votes_option on public.poll_votes(poll_id,option_id);
+alter table public.polls enable row level security;
+alter table public.poll_options enable row level security;
+alter table public.poll_votes enable row level security;
+revoke all on public.polls,public.poll_options,public.poll_votes from public,anon,authenticated;
+grant all on public.polls,public.poll_options,public.poll_votes to service_role;
+do $$ declare t text; begin
+ foreach t in array array['polls','poll_options','poll_votes'] loop
+ execute format('drop policy if exists %I on public.%I',t||'_private',t);
+ execute format('create policy %I on public.%I as restrictive for all to anon,authenticated using(false) with check(false)',t||'_private',t);
+ end loop;
+end $$;
+-- All writes serialize on their parent row. Options freeze after publication,
+-- including the race between a vote and an attempted edit.
+create or replace function public.guard_poll_option() returns trigger language plpgsql set search_path='' as $$
+declare parent uuid; state text; begin
+ parent:=case when TG_OP='DELETE' then old.poll_id else new.poll_id end;
+ select status into state from public.polls where id=parent for update;
+ if state is not null and state<>'DRAFT' then raise exception 'Options frozen' using errcode='22023'; end if;
+ if TG_OP='UPDATE' and (new.id<>old.id or new.poll_id<>old.poll_id) then raise exception 'Immutable identity' using errcode='22023'; end if;
+ if TG_OP='DELETE' then return old; else return new; end if;
+end $$;
+drop trigger if exists poll_option_guard on public.poll_options;
+create trigger poll_option_guard before insert or update or delete on public.poll_options for each row execute function public.guard_poll_option();
+create or replace function public.poll_projection(p_id uuid,p_voter text default null) returns jsonb
+language sql stable security definer set search_path='' as $$
+ select jsonb_build_object('id',p.id,'question',p.question,'status',case when p.status='PUBLISHED' and p.closes_at<=now() then 'CLOSED' else p.status end,'featured',p.featured,'created_at',p.created_at,'closes_at',p.closes_at,
+ 'voted',exists(select 1 from public.poll_votes v where v.poll_id=p.id and v.voter_hash=p_voter),
+ 'total',(select count(*) from public.poll_votes v where v.poll_id=p.id),
+ 'options',coalesce((select jsonb_agg(jsonb_build_object('id',o.id,'label',o.label,'votes',(select count(*) from public.poll_votes v where v.poll_id=p.id and v.option_id=o.id)) order by o.position) from public.poll_options o where o.poll_id=p.id),'[]'::jsonb))
+ from public.polls p where p.id=p_id
+$$;
+create or replace function public.list_polls(p_admin boolean default false,p_offset integer default 0,p_featured boolean default false) returns jsonb
+language plpgsql stable security definer set search_path='' as $$ begin
+ if p_offset is null or p_offset not between 0 and 100000 then raise exception 'Invalid page' using errcode='22023'; end if;
+ return jsonb_build_object('total',(select count(*) from public.polls p where (p_admin or p.status<>'DRAFT') and (not p_featured or (p.featured and p.status='PUBLISHED' and (p.closes_at is null or p.closes_at>now())))),
+ 'polls',coalesce((select jsonb_agg(public.poll_projection(p.id) order by p.created_at desc,p.id desc) from (select * from public.polls where (p_admin or status<>'DRAFT') and (not p_featured or (featured and status='PUBLISHED' and (closes_at is null or closes_at>now()))) order by created_at desc,id desc limit 12 offset p_offset) p),'[]'::jsonb));
+end $$;
+create or replace function public.admin_poll(p_id uuid,p_action text,p_question text default null,p_options text[] default null,p_closes_at timestamptz default null) returns uuid
+language plpgsql security definer set search_path='' as $$
+declare item public.polls; target uuid; label text; pos smallint:=0; begin
+ -- One consistent lock order for featured updates and lifecycle operations.
+ perform pg_advisory_xact_lock(hashtextextended('poll-admin',0));
+ if p_action not in ('save','publish','close','feature','delete') or p_action is null then raise exception 'Invalid action' using errcode='22023'; end if;
+ if p_id is not null then select * into item from public.polls where id=p_id for update;
+ if not found then raise exception 'Poll unavailable' using errcode='P0002'; end if; end if;
+ if p_action='save' then
+ if p_id is not null and item.status<>'DRAFT' then raise exception 'Only drafts editable' using errcode='22023'; end if;
+ if p_question is null or char_length(btrim(p_question)) not between 5 and 300 or p_options is null or cardinality(p_options) not between 2 and 6 or array_ndims(p_options)<>1 then raise exception 'Invalid poll' using errcode='22023'; end if;
+ if p_closes_at is not null and p_closes_at<=now() then raise exception 'Closing date in past' using errcode='22023'; end if;
+ foreach label in array p_options loop
+ if label is null or char_length(btrim(label)) not between 1 and 150 then raise exception 'Invalid option' using errcode='22023'; end if;
+ end loop;
+ if (select count(distinct lower(btrim(x))) from unnest(p_options) x)<>cardinality(p_options) then raise exception 'Duplicate options' using errcode='22023'; end if;
+ if p_id is null then insert into public.polls(question,closes_at) values(btrim(p_question),p_closes_at) returning id into target;
+ else target:=p_id; update public.polls set question=btrim(p_question),closes_at=p_closes_at,updated_at=now() where id=target;delete from public.poll_options where poll_id=target; end if;
+ foreach label in array p_options loop insert into public.poll_options(poll_id,position,label) values(target,pos,btrim(label));pos:=pos+1;end loop;
+ return target;
+ end if;
+ if p_id is null then raise exception 'Missing poll' using errcode='22023'; end if;
+ if p_action='delete' then
+ if item.status<>'DRAFT' then raise exception 'Only drafts deletable' using errcode='22023'; end if;
+ delete from public.polls where id=p_id;
+ elsif p_action='publish' then
+ if item.status<>'DRAFT' or (item.closes_at is not null and item.closes_at<=now()) or (select count(*) from public.poll_options where poll_id=p_id) not between 2 and 6 then raise exception 'Invalid publication' using errcode='22023'; end if;
+ update public.polls set featured=false where featured;
+ update public.polls set status='PUBLISHED',featured=true,updated_at=now() where id=p_id;
+ elsif p_action='close' then
+ if item.status<>'PUBLISHED' then raise exception 'Not active' using errcode='22023'; end if;
+ update public.polls set status='CLOSED',featured=false,updated_at=now() where id=p_id;
+ elsif p_action='feature' then
+ if item.status<>'PUBLISHED' or item.closes_at<=now() then raise exception 'Not active' using errcode='22023'; end if;
+ update public.polls set featured=false where featured;
+ update public.polls set featured=true,updated_at=now() where id=p_id;
+ end if;
+ return p_id;
+end $$;
+create or replace function public.vote_poll(p_poll uuid,p_option uuid,p_voter text) returns jsonb
+language plpgsql security definer set search_path='' as $$
+declare item public.polls; begin
+ if p_voter is null or p_voter !~ '^[a-f0-9]{64}$' then raise exception 'Invalid voter' using errcode='22023'; end if;
+ select * into item from public.polls where id=p_poll for update;
+ if not found then raise exception 'Poll unavailable' using errcode='P0002'; end if;
+ if item.status<>'PUBLISHED' or item.closes_at<=now() then raise exception 'Poll closed' using errcode='22023'; end if;
+ if not exists(select 1 from public.poll_options where poll_id=p_poll and id=p_option) then raise exception 'Invalid option' using errcode='22023'; end if;
+ if exists(select 1 from public.poll_votes where poll_id=p_poll and voter_hash=p_voter) then raise exception 'Already voted' using errcode='23505'; end if;
+ insert into public.poll_votes(poll_id,option_id,voter_hash) values(p_poll,p_option,p_voter);
+ return public.poll_projection(p_poll,p_voter);
+end $$;
+revoke all on function public.guard_poll_option(),public.poll_projection(uuid,text),public.list_polls(boolean,integer,boolean),public.admin_poll(uuid,text,text,text[],timestamptz),public.vote_poll(uuid,uuid,text) from public,anon,authenticated;
+grant execute on function public.poll_projection(uuid,text),public.list_polls(boolean,integer,boolean),public.admin_poll(uuid,text,text,text[],timestamptz),public.vote_poll(uuid,uuid,text) to service_role;
+commit;

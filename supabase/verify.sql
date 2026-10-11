@@ -167,3 +167,37 @@ do $$ declare r text; op text; cols text[]; begin
 end $$;
 select 'ITISpot requests, grants, RLS and metadata checks passed' as requests_result;
 rollback;
+
+-- Launch additions: aggregate-only likes and server-controlled anonymous polls.
+begin read only;
+do $$ declare tab text; r text; op text; fn regprocedure; cols text[]; begin
+ foreach tab in array array['spot_likes','polls','poll_options','poll_votes'] loop
+  if not exists(select 1 from pg_class where oid=('public.'||tab)::regclass and relrowsecurity) then raise exception 'Missing RLS: %',tab; end if;
+  foreach r in array array['anon','authenticated'] loop
+   foreach op in array array['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER'] loop
+    if has_table_privilege(r,'public.'||tab,op) then raise exception 'Client grant on %: % %',tab,r,op; end if;
+    if op in ('SELECT','INSERT','UPDATE','REFERENCES') and has_any_column_privilege(r,'public.'||tab,op) then raise exception 'Client column grant on %',tab; end if;
+   end loop;
+  end loop;
+  if not has_table_privilege('service_role','public.'||tab,'SELECT,INSERT,UPDATE,DELETE') then raise exception 'Missing server grants: %',tab; end if;
+  if not exists(select 1 from pg_policies where schemaname='public' and tablename=tab and permissive='RESTRICTIVE' and cmd='ALL' and qual='false' and with_check='false' and roles @> array['anon','authenticated']::name[]) then raise exception 'Private guard missing: %',tab; end if;
+ end loop;
+ select array_agg(column_name::text order by column_name) into cols from information_schema.columns where table_schema='public' and table_name='poll_votes';
+ if cols<>array['created_at','option_id','poll_id','voter_hash'] then raise exception 'Poll voter identity drift'; end if;
+ select array_agg(column_name::text order by column_name) into cols from information_schema.columns where table_schema='public' and table_name='spot_likes';
+ if cols<>array['created_at','spot_id','user_id'] then raise exception 'Like identity drift'; end if;
+ if exists(select 1 from information_schema.columns where table_schema='public' and table_name='spots' and column_name in ('user_id','profile_id','username','email')) then raise exception 'Spot identity association'; end if;
+ foreach fn in array array['public.spot_like_stats(uuid[])'::regprocedure,'public.set_spot_like(uuid,boolean)'::regprocedure,'public.ranked_spots(text,integer,text)'::regprocedure,'public.poll_projection(uuid,text)'::regprocedure,'public.list_polls(boolean,integer,boolean)'::regprocedure,'public.admin_poll(uuid,text,text,text[],timestamptz)'::regprocedure,'public.vote_poll(uuid,uuid,text)'::regprocedure] loop
+  if not exists(select 1 from pg_proc where oid=fn and prosecdef and proconfig @> array['search_path=""']) then raise exception 'Unsafe function: %',fn; end if;
+  foreach r in array array['anon','authenticated'] loop
+   if fn<>'public.spot_like_stats(uuid[])'::regprocedure and not (r='authenticated' and fn='public.set_spot_like(uuid,boolean)'::regprocedure) and has_function_privilege(r,fn,'EXECUTE') then raise exception 'Unexpected client RPC grant: % %',r,fn; end if;
+  end loop;
+ end loop;
+ if not has_function_privilege('anon','public.spot_like_stats(uuid[])','EXECUTE') or not has_function_privilege('authenticated','public.set_spot_like(uuid,boolean)','EXECUTE') then raise exception 'Like RPC grants missing'; end if;
+ if not exists(select 1 from pg_constraint where conrelid='public.spot_likes'::regclass and contype='p') or not exists(select 1 from pg_constraint where conrelid='public.poll_votes'::regclass and contype='p') then raise exception 'Duplicate guards missing'; end if;
+ if not exists(select 1 from pg_indexes where schemaname='public' and indexname='polls_one_featured') then raise exception 'Featured singleton missing'; end if;
+ if not exists(select 1 from pg_trigger where tgrelid='public.poll_options'::regclass and tgname='poll_option_guard' and tgenabled='O') then raise exception 'Frozen options guard missing'; end if;
+ if not exists(select 1 from pg_proc where oid='public.guard_poll_option()'::regprocedure and not prosecdef and proconfig @> array['search_path=""']) then raise exception 'Unsafe option trigger'; end if;
+end $$;
+select 'ITISpot likes, polls, grants, RLS and RPC checks passed' as launch_result;
+rollback;

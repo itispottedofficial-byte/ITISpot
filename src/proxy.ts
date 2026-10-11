@@ -45,6 +45,8 @@ export const config = {
   matcher: [
     "/",
     "/novita",
+    "/spotted/:path*",
+    "/sondaggi",
     "/richieste",
     "/login",
     "/registrati",

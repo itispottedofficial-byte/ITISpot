@@ -145,7 +145,7 @@ test("comments: anonymous reading, account identity, report, moderation and own 
   ).toBeVisible();
   await expect(dialog.locator(".comment-item")).toHaveCount(0);
   await dialog.getByRole("button", { name: "Chiudi commenti" }).click();
-  await expect(page.locator(".comment-open span")).toHaveText("0");
+  await expect(page.locator(".comment-open:not(.like-button) span")).toHaveText("0");
   for (let i = 0; i < 4; i++)
     expect(
       (

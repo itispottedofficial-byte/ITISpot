@@ -95,7 +95,9 @@ test("mobile submission, private image, moderation and logout", async ({
       () => document.documentElement.clientWidth,
     );
     const main = await page.locator(".admin-main").boundingBox();
-    const queue = await page.locator(".dashboard-window:not(.admin-comments):not(.admin-requests)").boundingBox();
+    const queue = await page
+      .locator(".dashboard-window:not(.admin-comments):not(.admin-requests)")
+      .boundingBox();
     expect(main!.x).toBe(0);
     expect(main!.width).toBe(viewport);
     expect(queue!.width).toBeLessThanOrEqual(1600);
@@ -258,19 +260,21 @@ test("full-width shells preserve readable content without overflow through ultra
 test("home navigation and public search keep future features inactive", async ({
   page,
 }) => {
+  await page.goto("/?page=2");
+  await expect(page).toHaveURL(/\/spotted\?page=2$/);
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "NOVITÀ", exact: true }),
+    page.getByRole("heading", { name: "HOME", exact: true }),
   ).toBeVisible();
-  for (const label of ["Curiosità", "Classifiche", "Sondaggi", "Arcade"])
+  for (const label of ["Curiosità", "Classifiche", "Arcade"])
     await expect(
       page.getByRole("button", { name: new RegExp(label + " in arrivo") }),
     ).toBeDisabled();
   await expect(
     page.getByRole("link", { name: "Login / Profilo" }),
   ).toHaveAttribute("href", "/login");
-  await page.getByRole("link", { name: "Tutti gli Spot" }).click();
-  await expect(page).toHaveURL(/\/novita$/);
+  await page.getByRole("link", { name: "Tutti gli Spot", exact: true }).click();
+  await expect(page).toHaveURL(/\/spotted$/);
   await page
     .getByLabel("Cerca negli Spot approvati")
     .fill("nessuna corrispondenza QA");
@@ -282,7 +286,7 @@ test("home navigation and public search keep future features inactive", async ({
     "nessuna corrispondenza QA",
   );
   await page.getByRole("link", { name: "Cancella ricerca" }).click();
-  await expect(page).toHaveURL(/\/novita$/);
+  await expect(page).toHaveURL(/\/spotted$/);
   await page.getByRole("link", { name: "Invia Spot", exact: true }).click();
   await expect(page).toHaveURL(/\/invia$/);
   await expect(page.getByLabel("Il tuo messaggio")).toBeVisible();

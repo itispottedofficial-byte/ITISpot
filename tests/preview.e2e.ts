@@ -4,7 +4,7 @@ test("card text contrast, hover feedback and touch targets stay readable", async
   page,
 }) => {
   await page.goto("/?preview=filled&featured=b");
-  const link = page.getByRole("link", { name: "Tutti gli Spot" });
+  const link = page.getByRole("link", { name: "Tutti gli Spot", exact: true });
   await expect(link).toBeVisible();
   const before = await link.evaluate(
     (element) => getComputedStyle(element).backgroundColor,
@@ -115,10 +115,13 @@ test("all five Home cases, search and keyboard focus work in local preview", asy
 }) => {
   for (const featured of ["a", "b", "c", "d", "e"]) {
     await page.goto("/?preview=filled&featured=" + featured);
-    await expect(page.locator(".public-spot-card")).toHaveCount(1);
-    await expect(page.locator(".public-spot-image")).toHaveCount(
-      ["b", "d", "e"].includes(featured) ? 1 : 0,
-    );
+    await expect(
+      page.locator(".home-highlights .public-spot-card"),
+    ).toHaveCount(1);
+    await expect(page.locator("#spot-feed .public-spot-card")).toHaveCount(0);
+    await expect(
+      page.locator(".home-highlights .public-spot-image"),
+    ).toHaveCount(["b", "d", "e"].includes(featured) ? 1 : 0);
   }
   await page.getByLabel("Cerca negli Spot approvati").fill("playlist");
   await page.getByLabel("Cerca negli Spot approvati").press("Tab");
@@ -131,7 +134,7 @@ test("all five Home cases, search and keyboard focus work in local preview", asy
       .evaluate((element) => getComputedStyle(element).outlineStyle),
   ).toBe("solid");
   await page.getByRole("button", { name: "Cerca", exact: true }).press("Enter");
-  await expect(page).toHaveURL(/novita.*preview=filled/);
+  await expect(page).toHaveURL(/spotted.*preview=filled/);
   await expect(page.locator(".public-spot-card")).toHaveCount(1);
   await page.getByRole("link", { name: "Cancella ricerca" }).click();
   await expect(page.locator(".public-spot-card")).toHaveCount(5);

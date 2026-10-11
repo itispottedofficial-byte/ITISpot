@@ -2,6 +2,13 @@ import { commentsDatabase } from "./comments-database.mjs";
 const db = await commentsDatabase();
 let queue = Promise.resolve();
 const calls = {
+  list_polls: ["p_admin","p_offset","p_featured"],
+  poll_projection: ["p_id","p_voter"],
+  admin_poll: ["p_id","p_action","p_question","p_options","p_closes_at"],
+  vote_poll: ["p_poll","p_option","p_voter"],
+  spot_like_stats: ["p_spots"],
+  set_spot_like: ["p_spot", "p_liked"],
+  ranked_spots: ["p_search", "p_page", "p_sort"],
   list_comments: ["p_spot", "p_offset"],
   comment_counts: ["p_spots"],
   create_comment: ["p_spot", "p_content"],

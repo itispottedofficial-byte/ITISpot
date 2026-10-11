@@ -5,7 +5,7 @@ export function FeedPreview({
   route,
 }: {
   preview?: PreviewState;
-  route: "/" | "/novita";
+  route: "/" | "/novita" | "/spotted";
 }) {
   if (!preview) return null;
   return (

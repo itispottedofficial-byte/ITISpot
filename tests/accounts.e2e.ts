@@ -99,11 +99,11 @@ test("optional account: signup, email confirmation, private SSR profile, reset, 
   expect((await page.request.get("/api/admin/spots")).status()).toBe(401);
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "NOVITÀ", exact: true }),
+    page.getByRole("heading", { name: "HOME", exact: true }),
   ).toBeVisible();
   await page.goto("/novita");
   await expect(
-    page.getByRole("heading", { name: "NOVITÀ", exact: true }),
+    page.getByRole("heading", { name: "SPOTTED", exact: true }),
   ).toBeVisible();
   await page.goto("/invia");
   await page

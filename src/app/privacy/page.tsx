@@ -101,6 +101,23 @@ export default function Privacy() {
               conservate finché un amministratore le elimina; l’anonimato
               assoluto non è garantito.
             </p>
+            <h2>Mi piace e sondaggi</h2>
+            <p>
+              I mi piace sono associati al tuo account e possono essere rimossi.
+              Pubblicamente mostriamo solo i conteggi. Mettere mi piace non ti
+              identifica come autore dello Spot.
+            </p>
+            <p>
+              Per votare nei sondaggi non serve un account. Usiamo un cookie
+              tecnico casuale, firmato e HttpOnly, valido fino a un anno. Il
+              database conserva un codice distinto per ciascun sondaggio,
+              opzione e data del voto, senza collegamenti al profilo. Cancellare
+              il cookie può permettere un nuovo voto: non garantiamo un voto per
+              persona. I risultati mostrano solo conteggi aggregati. La
+              prevenzione abuso riusa contatori temporanei HMAC, senza IP in
+              chiaro e senza fingerprinting. I voti rimangono per conservare i
+              risultati del sondaggio.
+            </p>
             <h2>Cookie e servizi</h2>
             <p>
               Nessun cookie pubblicitario e nessuna analitica. La dashboard

@@ -1,4 +1,6 @@
-import { Heart, Sparkles, UserRound } from "lucide-react";
+import { LikeButton } from "./LikeButton";
+import Link from "next/link";
+import { Sparkles, UserRound } from "lucide-react";
 import { Comments } from "./Comments";
 import type { PublicSpot } from "@/lib/public-spots";
 
@@ -7,11 +9,13 @@ export function SpotCard({
   compact = false,
   category,
   commentCount,
+  likes,
 }: {
   spot: PublicSpot & { imageAlt?: string };
   compact?: boolean;
   category?: string;
   commentCount?: number;
+  likes?: { count: number; liked: boolean };
 }) {
   const date = new Date(spot.created_at);
   return (
@@ -43,13 +47,20 @@ export function SpotCard({
           loading="lazy"
         />
       )}
+      {compact && (
+        <Link className="highlight-link" href={`/spotted/${spot.id}`}>
+          Apri lo Spot {likes && `· ${likes.count} mi piace`}{" "}
+          {commentCount !== undefined && `· ${commentCount} commenti`}
+        </Link>
+      )}
       {!compact && (
         <footer className="public-spot-future" aria-label="Commenti e reazioni">
           <Comments spotId={spot.id} initialCount={commentCount} />
-          <span>
-            <Heart size={16} aria-hidden="true" /> Reazioni
-          </span>
-          <small>in arrivo</small>
+          <LikeButton
+            spotId={spot.id}
+            count={likes?.count}
+            liked={likes?.liked}
+          />
         </footer>
       )}
     </article>

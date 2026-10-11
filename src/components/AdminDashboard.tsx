@@ -1,4 +1,5 @@
 "use client";
+import { AdminPolls } from "./AdminPolls";
 import { AdminRequests } from "./AdminRequests";
 import { AdminComments } from "./AdminComments";
 import Link from "next/link";
@@ -549,6 +550,7 @@ export function AdminDashboard({
       </RetroWindow>
       <AdminComments />
       <AdminRequests />
+      <AdminPolls />
       <dialog
         ref={dialog}
         aria-labelledby="dialog-heading"

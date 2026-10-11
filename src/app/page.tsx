@@ -1,5 +1,11 @@
+import { redirect } from "next/navigation";
+import { pollsPage } from "@/lib/polls";
+import { PollCard } from "@/components/PollCard";
+import { likeStats } from "@/lib/likes";
+import { rankedFeed } from "@/lib/public-spots";
 import Link from "next/link";
 import { Suspense } from "react";
+import { commentCounts } from "@/lib/comments";
 import { FeedPreview } from "@/components/FeedPreview";
 import { FeedLoading } from "@/components/FeedLoading";
 import { ArrowUpRight, BarChart3, Disc3, Trophy } from "lucide-react";
@@ -21,15 +27,25 @@ export default async function Home({
 }: {
   searchParams: Promise<FeedParams>;
 }) {
-  const preview = previewState(await searchParams);
+  const params = await searchParams;
+  const preview = previewState(params);
+  // Old Home pagination bookmarks now open the dedicated archive.
+  if (typeof params.page === "string") {
+    const requested = Number(params.page);
+    const page =
+      Number.isSafeInteger(requested) && requested > 0
+        ? Math.min(requested, 100000)
+        : 1;
+    redirect(feedHref("/spotted", preview, { page: String(page) }));
+  }
   return (
     <PortalShell active="home" preview={preview}>
       <SectionTitle
-        title="NOVITÀ"
+        title="HOME"
         description="Le voci, le idee e quello che succede qui."
       />
       <FeedPreview preview={preview} route="/" />
-      <Suspense key={JSON.stringify(preview)} fallback={<FeedLoading home />}>
+      <Suspense key={JSON.stringify([preview])} fallback={<FeedLoading home />}>
         <HomeHighlights preview={preview} />
       </Suspense>
       <section className="portal-continuation" aria-labelledby="next-title">
@@ -62,67 +78,119 @@ export default async function Home({
 }
 
 async function HomeHighlights({ preview }: { preview?: PreviewState }) {
-  const feed = await presentedFeed("", 1, preview);
-  const latest = feed.spots[0];
+  const [polls, feed, trendingFeed] = await Promise.all([
+    preview
+      ? Promise.resolve(null)
+      : pollsPage(false, 1, true).catch(() => null),
+    presentedFeed("", 1, preview),
+    preview ? Promise.resolve(null) : rankedFeed("", 1, "trending"),
+  ]);
+  const poll = polls?.polls[0],
+    latest = feed.spots[0],
+    trending = trendingFeed?.spots[0];
+  const ids = Array.from(
+    new Set([latest?.id, trending?.id].filter((id): id is string => !!id)),
+  );
+  const [likes, counts] = await Promise.all([
+    preview ? null : likeStats(ids),
+    preview ? null : commentCounts(ids),
+  ]);
   return (
-    <div className="home-highlights">
-      <RetroWindow
-        title="01 / Ultimo Spot"
-        className="portal-window latest-window"
+    <>
+      <div className="home-highlights">
+        <RetroWindow
+          title="01 / Ultimo Spot"
+          className="portal-window latest-window"
+        >
+          {latest ? (
+            <SpotCard
+              spot={latest}
+              compact
+              commentCount={counts?.[latest.id]}
+              likes={likes?.[latest.id]}
+            />
+          ) : (
+            <EmptyState
+              title={
+                feed.available
+                  ? "La prima voce sarà qui."
+                  : "Un attimo, ci ricolleghiamo."
+              }
+              description={
+                feed.available
+                  ? "Nessuno Spot approvato per ora. Ogni messaggio passa prima dal team."
+                  : "Le Novità non sono disponibili in questo momento. Riprova tra poco."
+              }
+            />
+          )}
+          <Link className="highlight-link" href={feedHref("/spotted", preview)}>
+            Tutti gli Spot <ArrowUpRight size={17} aria-hidden="true" />
+          </Link>
+        </RetroWindow>
+        <RetroWindow
+          title="02 / Sondaggio attivo"
+          className="portal-window poll-window"
+        >
+          {poll ? (
+            <PollCard poll={poll} />
+          ) : (
+            <>
+              <div className="feature-art poll-art" aria-hidden="true">
+                <BarChart3 size={76} />
+                <span>?</span>
+                <i>✦</i>
+              </div>
+              <div className="feature-copy">
+                <h2>La tua opinione conta.</h2>
+                <p>
+                  Il primo sondaggio è ancora in preparazione. Quando sarà
+                  pronto, lo troverai qui.
+                </p>
+                <span className="feature-status">Nessun sondaggio attivo</span>
+              </div>
+            </>
+          )}
+          <Link className="highlight-link" href="/sondaggi">
+            Tutti i sondaggi <ArrowUpRight size={17} aria-hidden="true" />
+          </Link>
+        </RetroWindow>
+        <RetroWindow
+          title="03 / Trending della settimana"
+          className="portal-window trend-window"
+        >
+          {trending ? (
+            <SpotCard
+              spot={trending}
+              compact
+              likes={likes?.[trending.id]}
+              commentCount={counts?.[trending.id]}
+            />
+          ) : (
+            <>
+              <div className="feature-art trend-art" aria-hidden="true">
+                <Trophy size={70} />
+                <span>✧</span>
+                <i>↗</i>
+              </div>
+              <div className="feature-copy">
+                <h2>Il prossimo tormentone?</h2>
+                <p>
+                  Qui comparirà lo Spot con più mi piace negli ultimi 7 giorni.
+                </p>
+                <span className="feature-status">
+                  Ancora nessun mi piace questa settimana
+                </span>
+              </div>
+            </>
+          )}
+        </RetroWindow>
+      </div>
+      <Link
+        className="retro-button archive-cta"
+        href={feedHref("/spotted", preview)}
       >
-        {latest ? (
-          <SpotCard spot={latest} compact />
-        ) : (
-          <EmptyState
-            title={
-              feed.available
-                ? "La prima voce sarà qui."
-                : "Un attimo, ci ricolleghiamo."
-            }
-            description={
-              feed.available
-                ? "Nessuno Spot approvato per ora. Ogni messaggio passa prima dal team."
-                : "Le Novità non sono disponibili in questo momento. Riprova tra poco."
-            }
-          />
-        )}
-        <Link className="highlight-link" href={feedHref("/novita", preview)}>
-          Tutti gli Spot <ArrowUpRight size={17} aria-hidden="true" />
-        </Link>
-      </RetroWindow>
-      <RetroWindow
-        title="02 / Sondaggio attivo"
-        className="portal-window poll-window"
-      >
-        <div className="feature-art poll-art" aria-hidden="true">
-          <BarChart3 size={76} />
-          <span>?</span>
-          <i>✦</i>
-        </div>
-        <div className="feature-copy">
-          <h2>La tua opinione conta.</h2>
-          <p>
-            Il primo sondaggio è ancora in preparazione. Quando sarà pronto, lo
-            troverai qui.
-          </p>
-          <span className="feature-status">Nessun sondaggio attivo</span>
-        </div>
-      </RetroWindow>
-      <RetroWindow
-        title="03 / Classifiche & trending"
-        className="portal-window trend-window"
-      >
-        <div className="feature-art trend-art" aria-hidden="true">
-          <Trophy size={70} />
-          <span>✧</span>
-          <i>↗</i>
-        </div>
-        <div className="feature-copy">
-          <h2>Il prossimo tormentone?</h2>
-          <p>Questo spazio aspetta le classifiche e i contenuti del momento.</p>
-          <span className="feature-status">In arrivo</span>
-        </div>
-      </RetroWindow>
-    </div>
+        VEDI TUTTI GLI SPOTTED <ArrowUpRight size={18} aria-hidden="true" />
+      </Link>
+    </>
   );
 }

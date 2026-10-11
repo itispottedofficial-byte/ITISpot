@@ -84,3 +84,35 @@ export async function publicImage(id: string): Promise<Buffer | null> {
     return null;
   return readImage(spot.image_path);
 }
+
+export async function publicSpot(id: string): Promise<PublicSpot | null> {
+  if (!idSchema.safeParse(id).success) return null;
+  const spot = await getSpot(id);
+  return spot?.status === "approved" && !spot.archived_at
+    ? project(spot)
+    : null;
+}
+
+export type FeedSort = "recent" | "likes" | "comments" | "trending";
+export async function rankedFeed(
+  query = "",
+  page = 1,
+  sort: FeedSort = "recent",
+): Promise<PublicFeed> {
+  if (sort === "recent") return publicFeed(query, page);
+  try {
+    const { data, error } = await supabase().rpc("ranked_spots", {
+      p_search: query.trim().slice(0, 500),
+      p_page: page,
+      p_sort: sort,
+    });
+    if (error) throw error;
+    return {
+      spots: data.spots.map(project),
+      total: data.total,
+      available: true,
+    };
+  } catch {
+    return { spots: [], total: 0, available: false };
+  }
+}

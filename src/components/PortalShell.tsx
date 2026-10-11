@@ -24,7 +24,12 @@ export function SearchBar({
   preview?: PreviewState;
 }) {
   return (
-    <form action="/novita" method="get" role="search" className="portal-search">
+    <form
+      action="/spotted"
+      method="get"
+      role="search"
+      className="portal-search"
+    >
       <label className="sr-only" htmlFor="explore">
         Cerca negli Spot approvati
       </label>
@@ -81,14 +86,13 @@ export function PortalHeader({
 const futureSections = [
   { label: "Curiosità", icon: Lightbulb },
   { label: "Classifiche", icon: Trophy },
-  { label: "Sondaggi", icon: BarChart3 },
   { label: "Arcade", icon: Gamepad2 },
 ];
 export function Sidebar({
   active,
   preview,
 }: {
-  active: "home" | "novita" | "account" | "requests";
+  active: "home" | "novita" | "account" | "requests" | "polls";
   preview?: PreviewState;
 }) {
   return (
@@ -105,6 +109,22 @@ export function Sidebar({
         >
           <Home size={21} aria-hidden="true" />
           <span>Home</span>
+        </Link>
+        <Link
+          href={feedHref("/spotted", preview)}
+          className={`sidebar-item sidebar-spotted ${active === "novita" ? "is-active" : ""}`}
+          aria-current={active === "novita" ? "page" : undefined}
+        >
+          <MessageSquare size={21} aria-hidden="true" />
+          <span>Spotted</span>
+        </Link>
+        <Link
+          href="/sondaggi"
+          className={`sidebar-item sidebar-polls ${active === "polls" ? "is-active" : ""}`}
+          aria-current={active === "polls" ? "page" : undefined}
+        >
+          <BarChart3 size={21} aria-hidden="true" />
+          <span>Sondaggi</span>
         </Link>
         {futureSections.map(({ label, icon: Icon }) => (
           <button
@@ -190,7 +210,7 @@ export function PortalShell({
   preview,
   children,
 }: {
-  active: "home" | "novita" | "account" | "requests";
+  active: "home" | "novita" | "account" | "requests" | "polls";
   query?: string;
   preview?: PreviewState;
   children: ReactNode;
